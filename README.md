@@ -27,6 +27,7 @@ policy are **synthetic** and clearly labeled as such — see
 - [AI architecture at a glance](#ai-architecture-at-a-glance)
 - [Setup](#setup)
 - [Environment variables](#environment-variables)
+- [Image storage (Cloudinary)](#image-storage-cloudinary)
 - [Database](#database)
 - [Running the app](#running-the-app)
 - [API overview](#api-overview)
@@ -151,7 +152,8 @@ Full detail, every prompt/schema, and the AI-admin-search security boundary diag
 
 ## Setup
 
-Prerequisites: Node.js 18+, MySQL 8+ (tested against MySQL 9.4), an OpenAI API key.
+Prerequisites: Node.js 18+, MySQL 8+, an OpenAI API key. Tested against both a local
+MySQL 9.4 install and a managed cloud MySQL instance (Aiven) over TLS (`DB_SSL_MODE=REQUIRED`).
 
 ```bash
 # 1. Backend
@@ -187,10 +189,11 @@ Demo accounts (password for all: `Password123!`):
 |---|---|
 | `PORT`, `NODE_ENV` | server port / environment |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
+| `DB_SSL_MODE` | set to `REQUIRED` for a managed/cloud MySQL host (Aiven, PlanetScale, etc.) that mandates TLS; leave unset for local MySQL |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | auth token signing |
 | `OPENAI_API_KEY` | **server-side only, never sent to the frontend** |
 | `OPENAI_TEXT_MODEL`, `OPENAI_VISION_MODEL`, `OPENAI_EMBEDDING_MODEL` | model names, overridable without code changes |
-| `UPLOAD_DIR` | local folder for uploaded images |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | image storage - **server-side only**, see [Image storage](#image-storage-cloudinary) |
 | `NOMINATIM_BASE_URL` | optional reverse-geocoding endpoint |
 | `CORS_ORIGIN` | allowed frontend origin |
 
@@ -200,8 +203,29 @@ Demo accounts (password for all: `Password123!`):
 |---|---|
 | `VITE_API_BASE_URL` | backend API base URL (e.g. `http://localhost:5000/api`) |
 
-No new environment variables were introduced in phase 2 — every new AI feature reuses the
-same `OPENAI_*` configuration.
+## Image storage (Cloudinary)
+
+Uploaded photos (complaint evidence, officer before/after, citizen reopen evidence) are
+stored on [Cloudinary](https://cloudinary.com), not local disk — this is what makes the
+backend deployable to a serverless/read-only-filesystem host like Vercel, and it also means
+photo URLs are already publicly reachable HTTPS URLs, so the OpenAI vision calls pass them
+straight through with no base64 round-trip.
+
+**Getting credentials** (free tier is plenty for this): sign up at
+[cloudinary.com/users/register/free](https://cloudinary.com/users/register/free), then on
+your [Console dashboard](https://console.cloudinary.com/) copy the **Cloud Name**, **API
+Key** and **API Secret** shown at the top into `backend/.env`:
+
+```
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=123456789012345
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+Uploads land in Cloudinary under `civic-connect/original`, `civic-connect/resolution` and
+`civic-connect/reopen` folders (see `services/upload/cloudinary.service.js`). No code
+changes needed beyond setting those three variables — multer already uses in-memory
+storage (`middleware/upload.middleware.js`) and streams the buffer straight to Cloudinary.
 
 ## Database
 
@@ -263,12 +287,21 @@ Frontend: `npx tsc --noEmit` (0 errors) and `npm run build` both pass.
 Password hashing (bcrypt), JWT auth, server-side RBAC on every route, Helmet, CORS,
 rate limiting, Zod input validation, MIME-validated file uploads (never trusts the client
 extension), centralized error handling (no stack traces in production responses), no
-secrets in logs (`utils/logger.js` redacts known-sensitive keys) or in this README. **The
-AI never generates or executes SQL** — admin search output is validated field-by-field
-against an explicit allowlist before any query is built; see
+secrets in logs (`utils/logger.js` redacts known-sensitive keys) or in this README.
+Uploaded files never touch local disk — they're validated in memory and streamed straight
+to Cloudinary — and `CLOUDINARY_API_SECRET`/`OPENAI_API_KEY`/`JWT_SECRET`/DB credentials are
+all backend-only, never sent to or readable by the frontend. **The AI never generates or
+executes SQL** — admin search output is validated field-by-field against an explicit
+allowlist before any query is built; see
 [`docs/architecture.md`](docs/architecture.md#ai-admin-search--security-boundary).
 
 ## Production considerations
+
+When `DB_SSL_MODE` is set, the MySQL connection uses `ssl: { rejectUnauthorized: false }` —
+encrypted in transit, but not verified against the provider's CA certificate. That's enough
+to satisfy a managed host like Aiven that mandates TLS, but for production hardening pin
+the provider's CA bundle instead (`ca: fs.readFileSync('path/to/ca.pem')`) rather than
+trusting any certificate.
 
 This build runs the AI pipeline synchronously on the request and has no real job scheduler
 (SLA escalation runs lazily on Intelligence Center load / an explicit endpoint) — both
@@ -286,7 +319,12 @@ documented tradeoffs appropriate for a demo, with upgrade paths noted in
   Center load, or `POST /admin/sla/check`) rather than on a cron/queue — documented, not
   hidden. Same for the AI pipeline itself, which runs inline on complaint submission rather
   than async (see Future improvements).
-- Uploaded images are stored on local disk (`backend/uploads/`), not S3/Cloudinary.
+- **Image storage uses Cloudinary** (see [Image storage](#image-storage-cloudinary)) rather
+  than local disk, which is what makes the backend deployable to a serverless/read-only-
+  filesystem host. The code path was written and the server starts cleanly with it, but it
+  was **not end-to-end tested against a live Cloudinary account** in this session — that
+  requires your own API credentials, which I don't have. Please add your keys to
+  `backend/.env` and submit one test complaint with a photo to confirm before deploying.
 - `seed:complaints` synthesizes severity signals and does not call OpenAI repeatedly (to
   avoid ~60 paid calls on every fresh seed) — it reuses the real deterministic priority/
   routing/SLA code, but its text is templated, not model-generated. Every complaint created
@@ -309,7 +347,6 @@ documented tradeoffs appropriate for a demo, with upgrade paths noted in
 ## Future improvements
 
 - Real GPS→ward polygon lookup once official ward boundary data is available
-- S3/Cloudinary storage + CDN for uploaded images
 - A real job queue (e.g. BullMQ) for the AI pipeline and SLA escalation sweep, instead of inline/lazy execution
 - WebSocket/SSE push for notifications instead of polling
 - SMS notifications (explicitly out of scope for this build)

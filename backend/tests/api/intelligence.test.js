@@ -35,6 +35,11 @@ jest.mock('../../src/services/ai/embedding.service', () => ({
 const request = require('supertest');
 const app = require('../../src/app');
 
+// A remote/managed MySQL host (e.g. Aiven) adds real network latency to every query, and a
+// complaint submission makes several round-trips - Jest's 5s default hook timeout is too
+// tight for that against a non-local database. Local MySQL stayed comfortably under 5s.
+jest.setTimeout(20000);
+
 async function loginAs(email, password = 'Password123!') {
   const res = await request(app).post('/api/auth/login').send({ email, password });
   return res.body.data.token;

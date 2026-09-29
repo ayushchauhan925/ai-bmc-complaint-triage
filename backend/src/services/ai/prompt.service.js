@@ -66,15 +66,15 @@ Rules:
 - Output strictly valid JSON and nothing else.`;
 }
 
-function buildAnalysisUserContent(description, imageDataUrls = []) {
+function buildAnalysisUserContent(description, imageUrls = []) {
   const content = [
     {
       type: 'text',
       text: `Citizen complaint text:\n"""${description}"""`,
     },
   ];
-  for (const dataUrl of imageDataUrls) {
-    content.push({ type: 'image_url', image_url: { url: dataUrl } });
+  for (const url of imageUrls) {
+    content.push({ type: 'image_url', image_url: { url } });
   }
   return content;
 }
@@ -102,13 +102,13 @@ This is advisory only - a human admin always makes the final call and can overri
 about uncertainty rather than guessing confidently.`;
 }
 
-function buildBeforeAfterUserContent(description, beforeDataUrl, afterDataUrl) {
+function buildBeforeAfterUserContent(description, beforeUrl, afterUrl) {
   return [
     { type: 'text', text: `Original complaint: """${description}"""\nCompare the BEFORE and AFTER photos below.` },
     { type: 'text', text: 'BEFORE:' },
-    { type: 'image_url', image_url: { url: beforeDataUrl } },
+    { type: 'image_url', image_url: { url: beforeUrl } },
     { type: 'text', text: 'AFTER:' },
-    { type: 'image_url', image_url: { url: afterDataUrl } },
+    { type: 'image_url', image_url: { url: afterUrl } },
   ];
 }
 

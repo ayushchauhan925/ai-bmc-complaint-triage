@@ -7,10 +7,6 @@ build/
 .env.local
 .env.*.local
 
-# Uploads
-backend/uploads/*
-!backend/uploads/.gitkeep
-
 # Logs
 *.log
 npm-debug.log*

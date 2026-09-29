@@ -4,6 +4,7 @@ const complaintService = require('../services/complaint/complaint.service');
 const statusService = require('../services/complaint/status.service');
 const imageVerificationService = require('../services/ai/imageVerification.service');
 const officerCopilotService = require('../services/ai/officerCopilot.service');
+const { uploadComplaintImage } = require('../services/upload/cloudinary.service');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
@@ -52,7 +53,8 @@ const uploadResolutionImage = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('A resolution image is required.', 400);
   }
-  await complaintModel.addImage(pool, complaint.id, `/uploads/${req.file.filename}`, 'RESOLUTION');
+  const imageUrl = await uploadComplaintImage(req.file.buffer, 'resolution');
+  await complaintModel.addImage(pool, complaint.id, imageUrl, 'RESOLUTION');
   const updated = await complaintService.getComplaintDetail(complaint.id);
   res.status(200).json({ success: true, data: { complaint: updated } });
 });

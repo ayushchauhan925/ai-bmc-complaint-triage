@@ -1,8 +1,15 @@
 const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
+const { uploadComplaintImage } = require('../upload/cloudinary.service');
 const AppError = require('../../utils/AppError');
 
 async function createComplaint({ userId, description, latitude, longitude, address, imageFiles }) {
+  // Upload to Cloudinary before opening the transaction - no point holding a DB
+  // transaction open across slow network calls to a third-party service.
+  const imageUrls = await Promise.all(
+    (imageFiles || []).map((file) => uploadComplaintImage(file.buffer, 'original'))
+  );
+
   const conn = await pool.getConnection();
   let complaintId;
   let complaintNumber;
@@ -13,9 +20,8 @@ async function createComplaint({ userId, description, latitude, longitude, addre
     complaintId = created.id;
     complaintNumber = created.complaintNumber;
 
-    for (const file of imageFiles || []) {
-      const publicUrl = `/uploads/${file.filename}`;
-      await complaintModel.addImage(conn, complaintId, publicUrl, 'ORIGINAL');
+    for (const imageUrl of imageUrls) {
+      await complaintModel.addImage(conn, complaintId, imageUrl, 'ORIGINAL');
     }
 
     await complaintModel.addHistory(conn, complaintId, null, 'SUBMITTED', userId, 'Complaint submitted by citizen.');

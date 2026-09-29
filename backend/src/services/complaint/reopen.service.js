@@ -1,7 +1,9 @@
+const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
 const reopeningModel = require('../../models/reopening.model');
 const statusService = require('./status.service');
 const notificationService = require('../notification/notification.service');
+const { uploadComplaintImage } = require('../upload/cloudinary.service');
 const AppError = require('../../utils/AppError');
 const logger = require('../../utils/logger');
 const { COMPLAINT_STATUS } = require('../../utils/constants');
@@ -26,8 +28,7 @@ async function reopenComplaint({ complaintId, user, reason, imageFile }) {
 
   let imageUrl = null;
   if (imageFile) {
-    imageUrl = `/uploads/${imageFile.filename}`;
-    const { pool } = require('../../config/db');
+    imageUrl = await uploadComplaintImage(imageFile.buffer, 'reopen');
     await complaintModel.addImage(pool, complaintId, imageUrl, 'REOPEN');
   }
 

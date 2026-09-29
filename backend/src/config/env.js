@@ -19,6 +19,9 @@ const env = {
     user: required('DB_USER', 'root'),
     password: process.env.DB_PASSWORD || '',
     name: required('DB_NAME', 'bmc_triage'),
+    // Managed MySQL providers (Aiven, PlanetScale, etc.) require TLS. Set DB_SSL_MODE=REQUIRED
+    // (or anything truthy) to enable it - local MySQL leaves this unset.
+    sslMode: process.env.DB_SSL_MODE || '',
   },
 
   jwt: {
@@ -33,7 +36,11 @@ const env = {
     embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
   },
 
-  uploadDir: process.env.UPLOAD_DIR || 'uploads',
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  },
 
   nominatimBaseUrl: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
 

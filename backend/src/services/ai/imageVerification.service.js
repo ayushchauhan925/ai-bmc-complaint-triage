@@ -2,7 +2,6 @@ const { getOpenAIClient } = require('../../config/openai');
 const env = require('../../config/env');
 const promptService = require('./prompt.service');
 const { validateBeforeAfterResponse } = require('./aiResponseParser');
-const { imageUrlToDataUri } = require('../../utils/imageEncode');
 const logger = require('../../utils/logger');
 
 // Section 21: before/after resolution verification. Advisory only - admin can always override.
@@ -12,18 +11,12 @@ async function verifyBeforeAfter({ description, beforeImageUrl, afterImageUrl })
     return { success: false, failureReason: 'OPENAI_API_KEY not configured.' };
   }
 
-  const beforeDataUrl = imageUrlToDataUri(beforeImageUrl);
-  const afterDataUrl = imageUrlToDataUri(afterImageUrl);
-  if (!beforeDataUrl || !afterDataUrl) {
-    return { success: false, failureReason: 'Before/after images could not be read.' };
-  }
-
   try {
     const completion = await client.chat.completions.create({
       model: env.openai.visionModel,
       messages: [
         { role: 'system', content: promptService.buildBeforeAfterSystemPrompt() },
-        { role: 'user', content: promptService.buildBeforeAfterUserContent(description, beforeDataUrl, afterDataUrl) },
+        { role: 'user', content: promptService.buildBeforeAfterUserContent(description, beforeImageUrl, afterImageUrl) },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.2,

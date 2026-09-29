@@ -10,7 +10,10 @@ const env = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   name: process.env.DB_NAME || 'bmc_triage',
+  sslMode: process.env.DB_SSL_MODE || '',
 };
+
+const sslOption = env.sslMode ? { ssl: { rejectUnauthorized: false } } : {};
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
@@ -21,8 +24,15 @@ async function ensureDatabase() {
     user: env.user,
     password: env.password,
     multipleStatements: true,
+    ...sslOption,
   });
-  await conn.query(`CREATE DATABASE IF NOT EXISTS \`${env.name}\` CHARACTER SET utf8mb4`);
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${env.name}\` CHARACTER SET utf8mb4`);
+  } catch (err) {
+    // Managed MySQL (e.g. Aiven) often provisions a fixed database and denies CREATE
+    // DATABASE to the app user - that's fine as long as it already exists.
+    console.warn(`Could not create database "${env.name}" (may already exist / not permitted): ${err.message}`);
+  }
   await conn.end();
 }
 
@@ -36,6 +46,7 @@ async function run() {
     password: env.password,
     database: env.name,
     multipleStatements: true,
+    ...sslOption,
   });
 
   await conn.query(`

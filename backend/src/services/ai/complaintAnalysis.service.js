@@ -2,7 +2,6 @@ const { getOpenAIClient } = require('../../config/openai');
 const env = require('../../config/env');
 const promptService = require('./prompt.service');
 const { validateAnalysisResponse } = require('./aiResponseParser');
-const { imageUrlToDataUri } = require('../../utils/imageEncode');
 const logger = require('../../utils/logger');
 
 const MAX_RETRIES = 1;
@@ -43,11 +42,11 @@ async function callModel(messages) {
  * even when the AI call fails (rule: app stays functional if AI fails).
  */
 async function analyzeComplaint({ description, imageUrls = [] }) {
-  const imageDataUrls = imageUrls.map(imageUrlToDataUri).filter(Boolean);
-
+  // Images live on Cloudinary at a public HTTPS URL, so they're passed straight through -
+  // no local file read / base64 conversion needed (see cloudinary.service.js).
   const messages = [
     { role: 'system', content: promptService.buildAnalysisSystemPrompt() },
-    { role: 'user', content: promptService.buildAnalysisUserContent(description, imageDataUrls) },
+    { role: 'user', content: promptService.buildAnalysisUserContent(description, imageUrls) },
   ];
 
   const modelResult = await callModel(messages);
