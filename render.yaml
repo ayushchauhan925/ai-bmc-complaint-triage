@@ -1,0 +1,60 @@
+# Render Blueprint for the backend API only. The MySQL database is NOT defined here -
+# it already runs on Aiven Cloud MySQL and is reached entirely through environment
+# variables (DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/DB_SSL_MODE).
+#
+# No secret values live in this file. Every sensitive var is marked `sync: false`, which
+# tells Render to prompt for the value in the dashboard instead of storing it here - so
+# this file is safe to commit. See README.md's "Render Deployment" section for the full
+# walkthrough of what to enter for each one.
+#
+# This blueprint is optional: you can equally create the Web Service by hand in the Render
+# dashboard using the same settings (see README) without ever using this file.
+
+services:
+  - type: web
+    name: bmc-triage-backend
+    runtime: node
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # PORT is supplied automatically by Render - do not set it here.
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "28040"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_SSL_MODE
+        value: REQUIRED
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_VISION_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: NOMINATIM_BASE_URL
+        value: https://nominatim.openstreetmap.org
+      - key: CORS_ORIGIN
+        sync: false

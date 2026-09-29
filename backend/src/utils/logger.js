@@ -1,4 +1,18 @@
-const REDACT_KEYS = new Set(['password', 'password_hash', 'token', 'jwt_secret', 'api_key', 'openai_api_key', 'authorization']);
+const REDACT_KEYS = new Set([
+  'password',
+  'password_hash',
+  'db_password',
+  'token',
+  'jwt_secret',
+  'api_key',
+  'apikey',
+  'openai_api_key',
+  'cloudinary_api_secret',
+  'cloudinary_api_key',
+  'api_secret',
+  'secret',
+  'authorization',
+]);
 
 function redact(meta) {
   if (!meta || typeof meta !== 'object') return meta;

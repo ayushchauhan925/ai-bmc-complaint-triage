@@ -34,6 +34,8 @@ policy are **synthetic** and clearly labeled as such — see
 - [Testing](#testing)
 - [Security](#security)
 - [Production considerations](#production-considerations)
+- [Render deployment](#render-deployment)
+- [Vercel deployment (frontend)](#vercel-deployment-frontend)
 - [Limitations & honesty notes](#limitations--honesty-notes)
 - [Future improvements](#future-improvements)
 - [Demo walkthrough](#demo-walkthrough)
@@ -295,6 +297,20 @@ executes SQL** — admin search output is validated field-by-field against an ex
 allowlist before any query is built; see
 [`docs/architecture.md`](docs/architecture.md#ai-admin-search--security-boundary).
 
+**Secrets handling rules — read before deploying:**
+- **`.env` must never be committed.** It's git-ignored (`.gitignore`: `.env`, `.env.*`,
+  `!.env.example`) — only `.env.example` (no real values) is tracked.
+- **API keys must never be placed in frontend code.** The frontend only ever reads
+  `VITE_API_BASE_URL`; `OPENAI_API_KEY`, `CLOUDINARY_API_SECRET`, `JWT_SECRET` and the
+  Aiven DB credentials exist only in the backend's environment.
+- **Production secrets go into Render's Environment Variables tab**, not into any file in
+  this repo — see [Render deployment](#render-deployment) step 9.
+- **Credentials must never appear in this README, any other doc, or a commit message.**
+  If you ever paste a real key while asking for help (in an issue, a chat, a commit), treat
+  it as compromised and rotate it immediately.
+- Before every commit, double-check `git status`/`git diff` for anything that looks like a
+  credential, even in a file that "shouldn't" have one.
+
 ## Production considerations
 
 When `DB_SSL_MODE` is set, the MySQL connection uses `ssl: { rejectUnauthorized: false }` —
@@ -308,6 +324,267 @@ This build runs the AI pipeline synchronously on the request and has no real job
 documented tradeoffs appropriate for a demo, with upgrade paths noted in
 [Future improvements](#future-improvements). See also `docs/architecture.md`'s
 [Performance & observability](docs/architecture.md#performance--observability) section.
+
+## Render deployment
+
+The backend is a standard stateless Express API — no local disk writes (images go to
+Cloudinary), the database is already hosted externally on Aiven, so it deploys to Render's
+free Node **Web Service** tier with no special infrastructure. This repo is a monorepo
+(`backend/` + `frontend/`); Render deploys the backend only — the frontend deploys
+separately (e.g. to Vercel/Netlify) and just points its `VITE_API_BASE_URL` at the Render URL.
+
+### 1. Prerequisites
+
+- This repository pushed to GitHub, with your latest changes on `main`
+- A Render account ([render.com](https://render.com)) — free tier is enough
+- Your Aiven MySQL connection details (already in use locally: `DB_HOST`, `DB_PORT`,
+  `DB_USER`, `DB_PASSWORD`, `DB_NAME`) and `DB_SSL_MODE=REQUIRED`
+- Your `OPENAI_API_KEY` and Cloudinary credentials
+- A long random `JWT_SECRET` (reuse your local one, or generate a new one — see
+  [Security](#security) for why this must never appear in the repo or this README)
+
+### 2. GitHub repository requirements
+
+Nothing special beyond what's already true: `backend/package.json` has a working
+`npm start` script (`node src/server.js`), `.env` is git-ignored, and `.env.example` lists
+every variable with no real values. Render builds straight from the branch you point it at
+— no CI config required.
+
+### 3. Render account setup
+
+Sign in at [dashboard.render.com](https://dashboard.render.com) (GitHub OAuth is the
+easiest option, since you'll be connecting a GitHub repo next).
+
+### 4. Create the Web Service
+
+**Option A — by hand (no file needed):** Dashboard → **New** → **Web Service** → connect
+this GitHub repository → configure the fields below → **Create Web Service**.
+
+**Option B — via the committed `render.yaml`:** Dashboard → **New** → **Blueprint** → select
+this repository. Render reads `render.yaml` at the repo root and pre-fills everything except
+the variables marked `sync: false` (all the secrets) — it'll prompt you for each of those
+once during setup. Either option produces the same service; the Blueprint just saves you
+from typing the field values below by hand.
+
+### 5. Repository selection
+
+Pick this repo from the list Render shows after connecting your GitHub account. If it
+doesn't appear, use "Configure account" in that picker to grant Render access to it.
+
+### 6. Root directory
+
+**`backend`** — this is a monorepo with `backend/` and `frontend/` as siblings at the repo
+root; Render needs to `cd` into `backend` before running install/build/start, exactly what
+the **Root Directory** field is for. (In `render.yaml` this is the `rootDir: backend` key.)
+
+### 7. Build command
+
+```
+npm install
+```
+
+### 8. Start command
+
+```
+npm start
+```
+
+This runs `node src/server.js` (see `backend/package.json`) — the app's real entry point;
+nothing was assumed here, it's the same script used for local development's non-watch mode.
+
+### 9. Environment variables
+
+Add each of these in the Web Service's **Environment** tab (Dashboard → your service →
+Environment). **Do not add `PORT`** — Render injects it automatically and the app already
+reads `process.env.PORT` with a local fallback (see `src/config/env.js`).
+
+| Key | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DB_HOST` | your Aiven host, e.g. `mysql-xxxxx.aivencloud.com` |
+| `DB_PORT` | your Aiven port, e.g. `28040` |
+| `DB_USER` | your Aiven user, e.g. `avnadmin` |
+| `DB_PASSWORD` | your Aiven password |
+| `DB_NAME` | your Aiven database name, e.g. `defaultdb` |
+| `DB_SSL_MODE` | `REQUIRED` |
+| `JWT_SECRET` | a long random string |
+| `JWT_EXPIRES_IN` | `7d` |
+| `OPENAI_API_KEY` | your OpenAI key |
+| `OPENAI_TEXT_MODEL` | `gpt-4o-mini` (or your preferred model) |
+| `OPENAI_VISION_MODEL` | `gpt-4o-mini` |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` |
+| `CLOUDINARY_CLOUD_NAME` | your Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | your Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | your Cloudinary API secret |
+| `NOMINATIM_BASE_URL` | `https://nominatim.openstreetmap.org` |
+| `CORS_ORIGIN` | your deployed frontend's URL, e.g. `https://your-app.vercel.app` (comma-separate multiple, e.g. add a preview-deployment domain) |
+
+### 10. Aiven MySQL configuration
+
+No changes needed on the Aiven side — the same credentials you use locally work from
+Render, since Aiven MySQL is reachable over the public internet (not restricted to your
+local IP) as long as your Aiven service doesn't have an IP allowlist configured. If it
+does, add `0.0.0.0/0` (or Render's published outbound IP ranges, if your Aiven plan
+supports stricter allowlisting) to Aiven's allowed-IPs list.
+
+### 11. SSL configuration
+
+Already handled in code (`src/config/db.js`, `database/migrate.js`) — when `DB_SSL_MODE`
+is set to any truthy value, the MySQL connection is created with `ssl: {
+rejectUnauthorized: false }`. This encrypts the connection (satisfying Aiven's requirement)
+without pinning Aiven's CA certificate; see the note in
+[Production considerations](#production-considerations) about hardening this further.
+**Do not unset `DB_SSL_MODE` on Render** — Aiven will refuse a non-TLS connection outright.
+
+### 12. Deploying
+
+Click **Create Web Service** (or, for a Blueprint, finish the prompted secret entry then
+**Apply**). Render clones the repo, runs the build command in `backend/`, then the start
+command. Watch the **Logs** tab — a successful boot looks like the same two lines you see
+locally:
+
+```
+{"level":"info","message":"Database connection established.", ...}
+{"level":"info","message":"Server listening on port 10000 (production)", ...}
+```
+
+(The port number will be whatever Render assigned via `PORT` — that's expected and correct.)
+
+### 13. Finding the Render URL
+
+Render shows it at the top of the service's dashboard page, in the form
+`https://bmc-triage-backend-xxxx.onrender.com` (or whatever you named the service — see
+`name: bmc-triage-backend` in `render.yaml` if you used the Blueprint).
+
+### 14. Testing `/health`
+
+```bash
+curl https://<your-render-service>.onrender.com/health
+# {"status":"ok","service":"BMC Complaint Triage API"}
+```
+
+This endpoint deliberately does not touch the database or OpenAI, so a 200 here confirms
+the process is up even if you haven't verified the database yet. To confirm the database
+too, hit `/api/health` or try logging in against a seeded account (see
+[Demo accounts](#setup)).
+
+### 15. Connecting the frontend
+
+Set the deployed frontend's `VITE_API_BASE_URL` to
+`https://<your-render-service>.onrender.com/api` (note the `/api` suffix — the frontend
+always calls through that prefix, see `frontend/src/services/api.ts`), and set the
+backend's `CORS_ORIGIN` (step 9) to that frontend's exact origin. Local development is
+unaffected either way — `localhost:5173` is always allowed by the backend outside of
+`NODE_ENV=production`, and the frontend's local `.env` keeps pointing at
+`http://localhost:5000/api`.
+
+### 16. Viewing Render logs
+
+Dashboard → your service → **Logs** tab (live tail), or **Events** tab for
+deploy/restart history. The app logs structured JSON lines (see `utils/logger.js`) with
+known secret-shaped keys redacted — but see [Security](#security) below regardless.
+
+### 17. Troubleshooting common deployment failures
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Build fails immediately | Wrong Root Directory | Must be `backend`, not the repo root |
+| `Error: Missing required environment variable: JWT_SECRET` (or `DB_HOST`/`DB_USER`/`DB_NAME`) at boot | A required env var wasn't set | Add it in the Environment tab (step 9) |
+| `Failed to connect to database` in logs | Wrong Aiven credentials, or Aiven's IP allowlist is blocking Render | Double-check `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`; check Aiven's allowlist (step 10) |
+| Database connects locally but not on Render, with a TLS/handshake error | `DB_SSL_MODE` not set on Render | Add `DB_SSL_MODE=REQUIRED` |
+| Frontend gets a CORS error in the browser console | `CORS_ORIGIN` doesn't match the frontend's exact deployed origin | Set it to the exact `https://...` origin (no trailing slash); comma-separate if you have more than one |
+| `403 Forbidden` with `"This origin is not permitted to access the API."` | Same as above | Same fix |
+| Random 500s under any real traffic, or a rate-limit-related crash in logs | `trust proxy` misconfigured | Already handled (`app.set('trust proxy', 1)` in `src/app.js`) - if you forked/modified this, don't remove it |
+| Service boots then immediately restarts in a loop | An uncaught startup error, or the port isn't bound correctly | Check Logs for the actual error; confirm you didn't override the start command |
+| First request after idle is very slow | Render's free tier spins down an inactive service and cold-starts it | Expected on the free plan; upgrade to a paid plan for always-on, or accept the cold-start delay for a demo |
+
+### 18. Redeployment after pushing to GitHub
+
+Render auto-deploys on every push to the connected branch (`main`) by default — no action
+needed. To trigger a redeploy without a new commit (e.g. after only changing an environment
+variable), use **Manual Deploy → Deploy latest commit** on the service dashboard.
+
+## Vercel deployment (frontend)
+
+The frontend is a static Vite build (no server-side rendering, no API routes of its own) —
+Vercel's default static/Vite preset handles it with almost no configuration. Two things
+were fixed specifically for this: a `vercel.json` SPA rewrite (without it, refreshing or
+directly linking to any non-root route like `/admin/complaints` 404s, since Vercel serves
+static files and doesn't know React Router owns that path), and a broken favicon reference
+(`index.html` pointed at a `/vite.svg` that didn't actually exist in `public/`).
+
+### 1. Prerequisites
+
+- This repository pushed to GitHub (same repo as the backend - it's a monorepo)
+- A Vercel account ([vercel.com](https://vercel.com)) — free tier is enough
+- Your backend already deployed (e.g. to Render — see [Render deployment](#render-deployment))
+  and its `/health` endpoint returning 200, so you have a real API URL to point at
+
+### 2. Import the project
+
+Vercel Dashboard → **Add New** → **Project** → import this GitHub repository.
+
+### 3. Root Directory
+
+Set **Root Directory** to **`frontend`** (this is a monorepo — `backend/` and `frontend/`
+are siblings at the repo root). Vercel auto-detects the Vite framework preset once you set
+this and pre-fills the build settings below; you shouldn't need to override them, but for
+reference:
+
+- **Framework Preset**: Vite
+- **Build Command**: `npm run build` (runs `vite build`)
+- **Output Directory**: `dist`
+- **Install Command**: `npm install` (default)
+
+### 4. Environment variables
+
+Add exactly one, in the project's **Settings → Environment Variables**:
+
+| Key | Value |
+|---|---|
+| `VITE_API_BASE_URL` | `https://<your-render-service>.onrender.com/api` (your deployed backend's URL, with the `/api` suffix) |
+
+**Important Vite gotcha**: `VITE_*` variables are baked into the JS bundle at **build
+time**, not read at runtime. If you change `VITE_API_BASE_URL` later, you must trigger a
+new deployment (Vercel does this automatically if you edit it in the dashboard and hit
+redeploy) — restarting won't pick it up, because there's no running server, just static
+files.
+
+### 5. Deploy
+
+Click **Deploy**. Vercel builds `frontend/` and serves `dist/` from its CDN. First deploy
+typically finishes in under a minute for this project.
+
+### 6. Finding the Vercel URL
+
+Shown on the project's dashboard after deploy, in the form
+`https://<project-name>.vercel.app` (Vercel also gives you a unique preview URL per branch/PR
+if you want one for testing before promoting to production).
+
+### 7. Connect it back to the backend
+
+Once you have the real Vercel URL, go back to Render (or wherever the backend runs) and set
+`CORS_ORIGIN` to that exact origin — see [Render deployment](#render-deployment) step 9 and
+step 15. Without this, the deployed frontend's API calls will fail with a CORS error in the
+browser console even though the backend itself is healthy (that failure mode is in the
+Render section's troubleshooting table too).
+
+### 8. Verifying it works
+
+Open the Vercel URL, register or log in with a seeded account (see
+[Demo accounts](#setup)), and confirm a page load actually reaches the backend (e.g. the
+citizen dashboard's stat cards populate, or login succeeds at all — login itself is the
+simplest end-to-end proof both the URL and CORS are wired correctly). Also try navigating
+directly to a nested route or refreshing on one (e.g. `/admin/complaints` if you're an
+admin) to confirm the `vercel.json` rewrite is working — a 404 there means Root Directory
+wasn't set to `frontend`, or `vercel.json` didn't ship (it must live at `frontend/vercel.json`,
+which is where it already is in this repo).
+
+### 9. Redeployment
+
+Vercel auto-deploys on every push to the connected branch, same as Render. Changing an
+environment variable requires a manual redeploy (Vercel's dashboard prompts for this) since
+it's baked in at build time, not read live.
 
 ## Limitations & honesty notes
 
