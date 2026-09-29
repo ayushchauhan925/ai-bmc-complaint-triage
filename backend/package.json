@@ -1,0 +1,36 @@
+{
+  "name": "bmc-triage-backend",
+  "version": "1.0.0",
+  "description": "AI BMC Complaint Triage - Backend API",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node database/migrate.js",
+    "migrate:undo": "node database/migrate.js down",
+    "seed": "node database/seed.js",
+    "seed:complaints": "node database/seed-complaints.js",
+    "test": "jest --runInBand --forceExit"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.0",
+    "openai": "^4.56.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
+  }
+}
