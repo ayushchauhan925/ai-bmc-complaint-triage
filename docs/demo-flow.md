@@ -1,9 +1,14 @@
 # Demo Flow (5-10 minutes)
 
-Prerequisites: both servers running (`npm run dev` in `backend/` and `frontend/`), database
-migrated and seeded (`npm run migrate && npm run seed && npm run seed:complaints`).
-Everything below was actually run against the live app during development — see the
-verification notes at the end for exactly what was tested and how.
+**Live deployment:** [ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app)
+(frontend) / [ai-bmc-complaint-triage.onrender.com](https://ai-bmc-complaint-triage.onrender.com)
+(backend). The steps below work there directly — no local setup needed. First request after
+inactivity may take ~30-60s (Render free-tier cold start).
+
+To run it locally instead: both servers running (`npm run dev` in `backend/` and
+`frontend/`), database migrated and seeded (`npm run migrate && npm run seed && npm run
+seed:complaints`). Everything below was actually run against the live app during
+development — see the verification notes at the end for exactly what was tested and how.
 
 ## 1. Citizen: report an issue (~90s)
 

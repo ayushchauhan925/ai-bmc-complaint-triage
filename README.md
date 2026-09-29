@@ -15,8 +15,24 @@ Built for a college hackathon, across two phases: a full working product first, 
 policy are **synthetic** and clearly labeled as such — see
 [Limitations](#limitations--honesty-notes).
 
+## Live demo
+
+- **App:** [ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app)
+  (frontend, on Vercel)
+- **API:** [ai-bmc-complaint-triage.onrender.com](https://ai-bmc-complaint-triage.onrender.com)
+  (backend, on Render — [`/health`](https://ai-bmc-complaint-triage.onrender.com/health) for
+  a liveness check)
+
+Demo accounts (password `Password123!` for all) are listed in [Setup](#setup). The backend
+is on Render's free tier, so the **first request after a period of inactivity can take up to
+~30-60 seconds** while the instance cold-starts — this is a hosting-tier characteristic, not
+a bug (see [Render deployment](#render-deployment)'s troubleshooting table). Full deployment
+instructions for both are further down if you want to deploy your own copy: [Render
+deployment](#render-deployment), [Vercel deployment](#vercel-deployment-frontend).
+
 ## Table of contents
 
+- [Live demo](#live-demo)
 - [Problem statement](#problem-statement)
 - [Solution](#solution)
 - [Architecture](#architecture)
@@ -632,4 +648,6 @@ it's baked in at build time, not read live.
 
 ## Demo walkthrough
 
-Full 5-10 minute script: [`docs/demo-flow.md`](docs/demo-flow.md).
+Full 5-10 minute script: [`docs/demo-flow.md`](docs/demo-flow.md). Run it live at
+[ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app) — see
+[Live demo](#live-demo) for the account details and the Render cold-start note.
