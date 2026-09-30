@@ -10,7 +10,6 @@ import { AlertIcon } from '../components/common/Icons';
 // Hidden: typing one of these into the email field triggers a themed reaction. Never blocks login.
 const SECRET_WORDS: Record<string, string> = {
   pothole: 'You found it! Pothole filled in 0.3 seconds. 🕳️➡️🛣️',
-  ayush: 'Built with ❤️ by Ayush. Hi! 👋',
   mumbai: 'Aamchi Mumbai! Vada pav is on the house. 🥪',
   bmc: 'Brihanmumbai Municipal Corporation, reporting for duty. 🏛️',
   chai: 'Cutting chai break approved. ☕ SLA paused.',
