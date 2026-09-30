@@ -23,8 +23,8 @@ export function useEasterEgg() {
   const keys = useRef<string[]>([]);
   const timer = useRef<number>();
 
-  const trigger = useCallback(() => {
-    setMessage(MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
+  const trigger = useCallback((custom?: string) => {
+    setMessage(custom ?? MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
     setActive(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setActive(false), DURATION_MS);
@@ -56,7 +56,7 @@ export function useEasterEgg() {
     };
   }, [trigger]);
 
-  return { active, message, onLogoClick };
+  return { active, message, onLogoClick, fire: trigger };
 }
 
 export function EasterEggOverlay({ active, message }: { active: boolean; message: string }) {
