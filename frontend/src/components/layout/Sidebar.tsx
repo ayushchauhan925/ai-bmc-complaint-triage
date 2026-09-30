@@ -42,7 +42,7 @@ export function MobileNav({ links }: { links: SidebarLink[] }) {
           to={link.to}
           end={link.end}
           className={({ isActive }) =>
-            `flex min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 px-2 py-1 text-center text-[11px] font-medium ${
+            `flex min-w-[4.5rem] flex-1 shrink-0 flex-col items-center gap-0.5 px-2 py-1 text-center text-[11px] font-medium ${
               isActive ? 'text-brand-700' : 'text-slate-500'
             }`
           }
