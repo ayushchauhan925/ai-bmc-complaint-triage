@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../services/api';
 import { Logo } from '../components/common/Logo';
+import { EasterEggOverlay, useEasterEgg } from '../components/common/EasterEgg';
 
 export default function Login() {
   const { login } = useAuth();
@@ -12,6 +13,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const egg = useEasterEgg();
 
   const from = (location.state as { from?: string })?.from;
 
@@ -34,9 +37,12 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <EasterEggOverlay active={egg.active} message={egg.message} />
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <Logo size={48} />
+          <button type="button" onClick={egg.onLogoClick} aria-label="Civic Connect logo" className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
+            <Logo size={48} />
+          </button>
           <h1 className="text-xl font-semibold text-slate-900">Civic Connect</h1>
           <p className="text-sm text-slate-500">AI-powered civic complaint triage</p>
         </div>

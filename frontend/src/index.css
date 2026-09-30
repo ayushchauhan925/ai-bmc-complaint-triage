@@ -37,3 +37,20 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 }
+
+/* Login easter egg */
+.egg-drop {
+  position: absolute;
+  top: -3rem;
+  animation-name: egg-fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+@keyframes egg-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(360deg); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .egg-drops { display: none; }
+}
