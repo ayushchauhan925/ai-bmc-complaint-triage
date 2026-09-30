@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise');
 const env = require('./env');
+const { buildSslOptions } = require('./sslOptions');
 
 const pool = mysql.createPool({
   host: env.db.host,
@@ -11,11 +12,9 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   dateStrings: true,
-  // Managed MySQL (e.g. Aiven) requires TLS. rejectUnauthorized: false trusts the
-  // provider's certificate without pinning a CA bundle - encrypted in transit, not
-  // certificate-verified. Fine for a hackathon demo; pin the provider's CA cert for
-  // production hardening.
-  ...(env.db.sslMode ? { ssl: { rejectUnauthorized: false } } : {}),
+  // Managed MySQL (e.g. Aiven) requires TLS. Without DB_SSL_CA the connection is encrypted
+  // but the certificate is not verified; set DB_SSL_CA to verify it (see sslOptions.js).
+  ...buildSslOptions(env.db),
 });
 
 async function testConnection() {

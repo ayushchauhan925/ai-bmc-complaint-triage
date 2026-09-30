@@ -41,6 +41,8 @@ describe('admin endpoints under ANSI_QUOTES sql_mode (Aiven-like)', () => {
     '/api/analytics/anomalies?refresh=true',
     '/api/analytics/forecast',
     '/api/analytics/department-workload',
+    '/api/analytics/recurring',
+    '/api/analytics/effectiveness',
     '/api/admin/audit-logs',
     '/api/admin/ai-usage',
     '/api/admin/ai-performance',

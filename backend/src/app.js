@@ -62,13 +62,16 @@ app.use('/api', apiLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  // Production: 20 attempts / 15 min / IP. The test suite creates many accounts from one IP.
+  limit: env.nodeEnv === 'test' ? 10000 : 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many attempts. Please try again later.' },
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // Endpoints that trigger paid OpenAI calls get a much tighter per-client budget than the
 // general API limiter, so a script cannot turn them into a cost/DoS vector.

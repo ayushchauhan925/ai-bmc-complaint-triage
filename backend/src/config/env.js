@@ -12,6 +12,9 @@ const env = {
   port: parseInt(process.env.PORT || '5000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
+  // Stack traces are only ever returned to clients when NODE_ENV is explicitly development/test.
+  // An unset or unexpected NODE_ENV is treated as production-safe (no error internals leak).
+  exposeErrorDetails: ['development', 'test'].includes(process.env.NODE_ENV || ''),
 
   db: {
     host: required('DB_HOST', 'localhost'),
@@ -22,6 +25,9 @@ const env = {
     // Managed MySQL providers (Aiven, PlanetScale, etc.) require TLS. Set DB_SSL_MODE=REQUIRED
     // (or anything truthy) to enable it - local MySQL leaves this unset.
     sslMode: process.env.DB_SSL_MODE || '',
+    // Optional: the provider's CA certificate (PEM text, or a path to a .pem file). When set,
+    // the server certificate is VERIFIED instead of merely trusted-on-first-use.
+    sslCa: process.env.DB_SSL_CA || '',
   },
 
   jwt: {
@@ -61,6 +67,16 @@ const env = {
   // Apply pending SQL migrations on boot so a deploy is always consistent with its schema.
   // Migrations are additive and tracked in _migrations; set AUTO_MIGRATE=false to opt out.
   autoMigrate: process.env.AUTO_MIGRATE !== 'false' && process.env.NODE_ENV !== 'test',
+
+  // Public URL of the frontend, used to build links in emails (password reset / verification).
+  frontendUrl: (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, ''),
+
+  // Web Push (VAPID). Generate once with `npx web-push generate-vapid-keys`. Disabled if unset.
+  push: {
+    publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    privateKey: process.env.VAPID_PRIVATE_KEY || '',
+    subject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+  },
 
   nominatimBaseUrl: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
 

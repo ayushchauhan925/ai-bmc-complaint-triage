@@ -44,10 +44,31 @@ const JOBS = [
 const running = new Set();
 const timers = [];
 
-/** Runs one job with an overlap guard; outcome is stored in job_runs and never throws. */
+/**
+ * Runs one job with two overlap guards: an in-process flag, and a MySQL advisory lock
+ * (GET_LOCK) so that several backend instances sharing one database never run the same job
+ * at the same time. The outcome is stored in job_runs; this function never throws.
+ */
 async function runJob(job) {
   if (running.has(job.name)) return { skipped: true };
   running.add(job.name);
+
+  const lockConn = await pool.getConnection().catch(() => null);
+  let haveLock = false;
+  if (lockConn) {
+    try {
+      const [[row]] = await lockConn.query('SELECT GET_LOCK(?, 0) AS ok', [`civic:${job.name}`]);
+      haveLock = Number(row.ok) === 1;
+    } catch (err) {
+      haveLock = true; // lock service unavailable: fall back to the in-process guard only
+    }
+    if (!haveLock) {
+      lockConn.release();
+      running.delete(job.name);
+      return { skipped: true, reason: 'another instance is running this job' };
+    }
+  }
+
   const startedAt = Date.now();
   try {
     const details = await job.run();
@@ -68,6 +89,10 @@ async function runJob(job) {
       .catch(() => {});
     return { ok: false, error: err.message };
   } finally {
+    if (lockConn) {
+      await lockConn.query('SELECT RELEASE_LOCK(?)', [`civic:${job.name}`]).catch(() => {});
+      lockConn.release();
+    }
     running.delete(job.name);
   }
 }

@@ -26,7 +26,7 @@ function errorHandler(err, req, res, next) {
     message: statusCode >= 500 ? 'Something went wrong. Please try again shortly.' : err.message,
     ...(err.details ? { details: err.details } : {}),
     ...(statusCode >= 500 && req.id ? { requestId: req.id } : {}),
-    ...(env.nodeEnv !== 'production' && statusCode >= 500 ? { stack: err.stack } : {}),
+    ...(env.exposeErrorDetails && statusCode >= 500 ? { stack: err.stack } : {}),
   });
 }
 

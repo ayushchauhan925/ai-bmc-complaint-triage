@@ -13,7 +13,8 @@ const env = {
   sslMode: process.env.DB_SSL_MODE || '',
 };
 
-const sslOption = env.sslMode ? { ssl: { rejectUnauthorized: false } } : {};
+const { buildSslOptions } = require('../src/config/sslOptions');
+const sslOption = buildSslOptions({ sslMode: env.sslMode, sslCa: process.env.DB_SSL_CA || '' });
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 

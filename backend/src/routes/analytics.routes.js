@@ -16,5 +16,7 @@ router.get('/clusters', analyticsController.hotspots); // alias: density cluster
 router.get('/anomalies', analyticsController.anomalies);
 router.get('/forecast', analyticsController.forecast);
 router.get('/department-workload', analyticsController.departmentWorkload);
+router.get('/recurring', analyticsController.recurring);
+router.get('/effectiveness', analyticsController.effectiveness);
 
 module.exports = router;

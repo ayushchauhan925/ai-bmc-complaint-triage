@@ -3,6 +3,7 @@ const analyticsService = require('../services/analytics/analytics.service');
 const anomalyService = require('../services/analytics/anomaly.service');
 const forecastService = require('../services/analytics/forecast.service');
 const workloadService = require('../services/analytics/departmentWorkload.service');
+const recurringService = require('../services/analytics/recurring.service');
 const hotspotService = require('../services/complaint/hotspot.service');
 const escalationEventModel = require('../models/escalationEvent.model');
 const asyncHandler = require('../utils/asyncHandler');
@@ -120,4 +121,14 @@ const departmentWorkload = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { departments: workload, trend: detail } });
 });
 
-module.exports = { overview, trends, heatmap, hotspots, anomalies, forecast, departmentWorkload };
+const recurring = asyncHandler(async (req, res) => {
+  const data = await recurringService.getRecurringProblems({ days: req.query.days, radiusMeters: req.query.radius ? Math.min(Math.max(Number(req.query.radius), 50), 500) : undefined });
+  res.status(200).json({ success: true, data });
+});
+
+const effectiveness = asyncHandler(async (req, res) => {
+  const data = await recurringService.getEffectiveness({ windowDays: req.query.window });
+  res.status(200).json({ success: true, data });
+});
+
+module.exports = { recurring, effectiveness, overview, trends, heatmap, hotspots, anomalies, forecast, departmentWorkload };

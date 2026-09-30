@@ -1,6 +1,6 @@
 const { pool } = require('../config/db');
 
-const PUBLIC_FIELDS = 'id, name, email, phone, role, department_id, created_at';
+const PUBLIC_FIELDS = 'id, name, email, phone, role, department_id, email_verified_at, created_at';
 
 async function findByEmail(email) {
   const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
@@ -26,4 +26,20 @@ async function listByRole(role) {
   return rows;
 }
 
-module.exports = { findByEmail, findById, create, listByRole };
+async function recordFailedLogin(id, attempts, lockUntil) {
+  await pool.query('UPDATE users SET failed_login_attempts = ?, locked_until = ? WHERE id = ?', [attempts, lockUntil, id]);
+}
+
+async function clearLoginFailures(id) {
+  await pool.query('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?', [id]);
+}
+
+async function setPassword(id, passwordHash) {
+  await pool.query('UPDATE users SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL WHERE id = ?', [passwordHash, id]);
+}
+
+async function markEmailVerified(id) {
+  await pool.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?', [id]);
+}
+
+module.exports = { findByEmail, findById, create, listByRole, recordFailedLogin, clearLoginFailures, setPassword, markEmailVerified };

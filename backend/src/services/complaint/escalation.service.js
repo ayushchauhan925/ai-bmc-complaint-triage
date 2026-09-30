@@ -26,6 +26,10 @@ async function runSlaEscalationCheck() {
   let newEscalations = 0;
   const admins = await userModel.listByRole('ADMIN');
 
+  // One query for every already-escalated (complaint, state) pair, instead of one per complaint.
+  const [done] = await pool.query('SELECT DISTINCT complaint_id, to_sla_status FROM sla_escalations');
+  const escalated = new Set(done.map((d) => `${d.complaint_id}:${d.to_sla_status}`));
+
   for (const complaint of rows) {
     const policy = await slaPolicyService.resolvePolicy(complaint.priority_level, complaint.category);
     const newStatus = slaService.computeSlaStatus({
@@ -45,8 +49,8 @@ async function runSlaEscalationCheck() {
     const rolesToNotify = SLA_ESCALATION.notifyOn[newStatus];
     if (!rolesToNotify) continue;
 
-    const alreadyEscalated = await slaEscalationModel.hasEscalation(complaint.id, newStatus);
-    if (alreadyEscalated) continue;
+    if (escalated.has(`${complaint.id}:${newStatus}`)) continue;
+    escalated.add(`${complaint.id}:${newStatus}`);
 
     const breached = newStatus === 'BREACHED';
     await escalationEventModel.create({

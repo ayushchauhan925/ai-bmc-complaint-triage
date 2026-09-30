@@ -1,6 +1,7 @@
 const { pool } = require('../../config/db');
 const inAppChannel = require('./channels/inApp.channel');
 const emailChannel = require('./channels/email.channel');
+const pushChannel = require('./channels/push.channel');
 const logger = require('../../utils/logger');
 const metrics = require('../observability/metrics.service');
 
@@ -13,7 +14,7 @@ const metrics = require('../observability/metrics.service');
  * Delivery never throws into the caller: a failed notification must not be able to roll back
  * or fail the operation that triggered it (status change, escalation, ...).
  */
-const CHANNELS = [inAppChannel, emailChannel];
+const CHANNELS = [inAppChannel, emailChannel, pushChannel];
 
 async function notify(payload) {
   const outcomes = {};
