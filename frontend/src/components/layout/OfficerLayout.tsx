@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { Footer } from './Footer';
 import { Sidebar, MobileNav } from './Sidebar';
 import { HomeIcon, ClipboardIcon, UserIcon } from '../common/Icons';
 
@@ -16,8 +17,9 @@ export function OfficerLayout({ children }: { children?: React.ReactNode }) {
       <Navbar />
       <div className="flex">
         <Sidebar links={links} title="Officer" />
-        <main className="min-h-[calc(100vh-56px)] flex-1 overflow-x-hidden pb-16 md:pb-0">
-          {children ?? <Outlet />}
+        <main className="flex min-h-[calc(100vh-56px)] min-w-0 flex-1 flex-col overflow-x-hidden pb-20 md:pb-0">
+          <div className="flex-1">{children ?? <Outlet />}</div>
+          <Footer variant="compact" />
         </main>
       </div>
       <MobileNav links={links} />

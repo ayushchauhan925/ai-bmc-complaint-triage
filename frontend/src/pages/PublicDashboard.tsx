@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Footer } from '../components/layout/Footer';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { getPublicStatistics } from '../services/public.service';
@@ -114,6 +115,7 @@ function StatTile({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="card p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      <Footer />
     </div>
   );
 }

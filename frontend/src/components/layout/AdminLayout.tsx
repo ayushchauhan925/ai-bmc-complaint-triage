@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { Footer } from './Footer';
 import { Sidebar, MobileNav } from './Sidebar';
 import React, { Suspense } from 'react';
 import { HomeIcon, ClipboardIcon, MapIcon, ChartIcon, LayersIcon, AlertIcon, BoltIcon, ActivityIcon, ShieldIcon, CpuIcon, ScrollIcon } from '../common/Icons';
@@ -25,8 +26,11 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
       <Navbar />
       <div className="flex">
         <Sidebar links={links} title="Admin" />
-        <main className="min-h-[calc(100vh-56px)] flex-1 overflow-x-hidden pb-16 md:pb-0">
-          <Suspense fallback={<div className="p-6"><PageSkeleton /></div>}>{children ?? <Outlet />}</Suspense>
+        <main className="flex min-h-[calc(100vh-56px)] min-w-0 flex-1 flex-col overflow-x-hidden pb-20 md:pb-0">
+          <div className="flex-1">
+            <Suspense fallback={<div className="p-6"><PageSkeleton /></div>}>{children ?? <Outlet />}</Suspense>
+          </div>
+          <Footer variant="compact" />
         </main>
       </div>
       <MobileNav links={links} />

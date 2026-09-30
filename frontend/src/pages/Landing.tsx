@@ -1,4 +1,5 @@
 import React from 'react';
+import { Footer } from '../components/layout/Footer';
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { MapIcon, ChartIcon, AlertIcon, CameraIcon } from '../components/common/Icons';
@@ -66,9 +67,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-100 py-8 text-center text-xs text-slate-400">
-        Built for a civic-tech hackathon. Demo data and ward boundaries are synthetic, not official municipal records.
-      </footer>
+      <Footer />
     </div>
   );
 }
