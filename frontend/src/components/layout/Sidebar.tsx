@@ -10,7 +10,7 @@ export interface SidebarLink {
 
 export function Sidebar({ links, title }: { links: SidebarLink[]; title: string }) {
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white md:block">
+    <aside className="sticky top-14 hidden h-[calc(100vh-56px)] w-60 shrink-0 self-start overflow-y-auto overscroll-contain border-r border-slate-200 bg-white pb-6 md:block">
       <div className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</div>
       <nav className="flex flex-col gap-0.5 px-2">
         {links.map((link) => (
