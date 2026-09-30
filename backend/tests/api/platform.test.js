@@ -483,3 +483,18 @@ describe('upload hardening', () => {
     expect(res.body.message).toMatch(/not a valid/i);
   });
 });
+
+describe('public transparency data stays privacy-safe', () => {
+  test('exposes only aggregates - no identifiers, coordinates, addresses or free text', async () => {
+    const res = await request(app).get('/api/public/statistics');
+    expect(res.status).toBe(200);
+    const { data_scope: scope, ...data } = res.body.data;
+    expect(scope).toMatch(/aggregated/i);
+    expect(JSON.stringify(data)).not.toMatch(/email|phone|@|latitude|longitude|address|description|citizen/i);
+    expect(Array.isArray(data.by_department)).toBe(true);
+    // small-cell suppression: no department or category below the minimum group size is published
+    for (const d of data.by_department) expect(d.total).toBeGreaterThanOrEqual(data.min_group_size);
+    for (const c of data.by_category) expect(c.count).toBeGreaterThanOrEqual(data.min_group_size);
+    expect(data.week_over_week).toEqual(expect.objectContaining({ this_week: expect.any(Number), last_week: expect.any(Number) }));
+  });
+});

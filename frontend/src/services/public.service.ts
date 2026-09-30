@@ -2,11 +2,18 @@ import { api } from './api';
 import type { ApiResponse } from '../utils/types';
 
 export interface PublicStatistics {
+  generated_at?: string;
+  resolution_rate_pct?: number | null;
+  active_incidents?: number;
+  by_status?: { status: string; count: number }[];
+  by_department?: { department: string; total: number; resolved: number; avg_resolution_hours: number | null }[];
+  week_over_week?: { this_week: number; last_week: number; change_pct: number | null };
+  min_group_size?: number;
   total_complaints: number;
   resolved: number;
   in_progress: number;
   pending_or_active: number;
-  by_category: { category: string; count: number }[];
+  by_category: { category: string; count: number; resolved?: number }[];
   complaints_over_time: { date: string; count: number }[];
   avg_resolution_hours: number | null;
   sla_compliance_pct: number | null;
