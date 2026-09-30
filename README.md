@@ -416,7 +416,7 @@ Kept the existing stack and design system (Tailwind, Recharts, React-Leaflet, cu
 
 ### PDF reports
 
-Generated **in the browser** ( + , loaded only when a button is clicked, so they add nothing to the initial bundle) from data the signed-in user can already see - no extra server load and no new permissions. Every report has the Civic Connect header, page numbers, a generation timestamp and a data-scope footer.
+Generated **in the browser** (`jspdf` + `jspdf-autotable`, loaded only when a button is clicked, so they add nothing to the initial bundle) from data the signed-in user can already see - no extra server load and no new permissions. Every report has the Civic Connect header, page numbers, a generation timestamp and a data-scope footer.
 
 | Where | Button | Contents |
 |---|---|---|
@@ -429,7 +429,7 @@ Generated **in the browser** ( + , loaded only when a button is clicked, so they
 | Audit log | **Export page (PDF)** | The current filtered page with before/after values |
 | Public dashboard | **Download summary (PDF)** | Anonymous aggregates only |
 
-Charts are not embedded - reports contain the underlying figures as tables. **Limitation:** the standard PDF fonts cover Latin text only, so Hindi/Marathi text is replaced by  (the English AI summary is included alongside) rather than printed garbled.
+Charts are not embedded - reports contain the underlying figures as tables. **Limitation:** the standard PDF fonts cover Latin text only, so Hindi/Marathi text is replaced by `[non-Latin text]` (the English AI summary is included alongside) rather than printed garbled.
 
 Cross-cutting UX: skeleton loading on every data page, explicit error panel with **Try again**, empty states, **"Insufficient data"** panels wherever the backend declines to produce a number, text labels alongside colour for priority/status/SLA, keyboard-operable tabs/tables with `aria-*` roles, `role="img"` chart labels, mobile scrollable nav (all links reachable), table→card layouts on small screens.
 
