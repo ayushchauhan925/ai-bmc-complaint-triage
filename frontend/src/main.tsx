@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
+import { I18nProvider } from './i18n';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import 'leaflet/dist/leaflet.css';
 import './index.css';
@@ -17,9 +19,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <ErrorBoundary page>
+              <App />
+            </ErrorBoundary>
+          </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>

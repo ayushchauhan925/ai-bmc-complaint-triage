@@ -1,23 +1,24 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { tr } from '../../i18n';
 
 const YEAR = new Date().getFullYear();
 
-const COLUMNS: { title: string; links: { to: string; label: string }[] }[] = [
+const columns = (): { title: string; links: { to: string; label: string }[] }[] => [
   {
-    title: 'Citizens',
+    title: tr('footer.citizens'),
     links: [
-      { to: '/complaints/new', label: 'Report an issue' },
-      { to: '/my-complaints', label: 'Track my complaints' },
-      { to: '/public', label: 'Public dashboard' },
+      { to: '/complaints/new', label: tr('footer.reportIssue') },
+      { to: '/my-complaints', label: tr('footer.track') },
+      { to: '/public', label: tr('footer.public') },
     ],
   },
   {
-    title: 'Account',
+    title: tr('footer.account'),
     links: [
-      { to: '/login', label: 'Sign in' },
-      { to: '/register', label: 'Create an account' },
-      { to: '/profile', label: 'Profile' },
+      { to: '/login', label: tr('footer.signIn') },
+      { to: '/register', label: tr('footer.create') },
+      { to: '/profile', label: tr('nav.profile') },
     ],
   },
 ];
@@ -43,8 +44,8 @@ export function Footer({ variant = 'full' }: { variant?: 'full' | 'compact' }) {
     return (
       <footer className="border-t border-slate-200 bg-white px-4 py-4 text-xs text-slate-500 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
-          <p>© {YEAR} Civic Connect · AI proposes, people decide.</p>
-          <p className="text-slate-400">Demo data is synthetic — not official municipal records.</p>
+          <p>© {YEAR} Civic Connect · {tr('footer.tagline')}</p>
+          <p className="text-slate-400">{tr('footer.demo')}</p>
         </div>
       </footer>
     );
@@ -56,10 +57,10 @@ export function Footer({ variant = 'full' }: { variant?: 'full' | 'compact' }) {
         <div>
           <Brand />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-500">
-            Report civic issues, understand how they are prioritised, and follow them from first report to resolution.
+            {tr('footer.blurb')}
           </p>
         </div>
-        {COLUMNS.map((col) => (
+        {columns().map((col) => (
           <nav key={col.title} aria-label={col.title}>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{col.title}</p>
             <ul className="mt-3 space-y-2">

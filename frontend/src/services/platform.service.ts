@@ -162,3 +162,19 @@ export const observability = () => get<Observability>('/admin/observability');
 export const runJob = (name: string) => send('post', `/admin/jobs/${name}/run`);
 export const semanticSearch = (q: string) =>
   get<{ mode: 'semantic' | 'keyword'; reason?: string; results: { id: number; complaint_number: string; category: string; ai_title: string | null; description: string; status: string; priority_level: string; similarity: number | null }[] }>('/admin/search/semantic', { q });
+
+export interface RecurringProblem {
+  id: string; category: string; location: { latitude: number; longitude: number; radiusMeters: number }; landmark: string | null;
+  reports: number; incidents: number; interventions: number; recurredAfterResolution: number; reopenings: number; openNow: number;
+  status: 'ACTIVE' | 'QUIET'; firstReportedAt: string; latestReportedAt: string; firstResolvedAt: string; complaintNumbers: string[];
+}
+export interface EffectivenessResult {
+  id: string; category: string; location: { latitude: number; longitude: number }; resolvedAt: string; resolvedComplaints: number; before: number; after: number; changePct: number;
+}
+export interface EffectivenessData {
+  windowDays: number; radiusMeters: number; minBefore: number; locationsEvaluated: number; caveat: string;
+  summary: { medianChangePct: number | null; reducedCount: number; unchangedCount: number; increasedCount: number };
+  results: EffectivenessResult[];
+}
+export const recurring = (days = 180) => get<{ windowDays: number; radiusMeters: number; minReports: number; problems: RecurringProblem[] }>('/analytics/recurring', { days });
+export const effectiveness = (window = 30) => get<EffectivenessData>('/analytics/effectiveness', { window });

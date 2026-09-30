@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../services/api';
 import { AuthShell } from '../components/auth/AuthShell';
+import { useI18n } from '../i18n';
 import { EasterEggOverlay, useEasterEgg } from '../components/common/EasterEgg';
 import { Spinner } from '../components/common/Spinner';
 import { AlertIcon } from '../components/common/Icons';
@@ -41,6 +42,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const egg = useEasterEgg();
+  const { t } = useI18n();
 
   const from = (location.state as { from?: string })?.from;
 
@@ -74,8 +76,8 @@ export default function Login() {
       onLogoClick={egg.onLogoClick}
       overlay={<EasterEggOverlay active={egg.active} message={egg.message} />}
     >
-      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome back</h2>
-      <p className="mt-1 text-sm text-slate-500">Sign in to report, track or manage civic complaints.</p>
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{t('auth.welcomeBack')}</h2>
+      <p className="mt-1 text-sm text-slate-500">{t('auth.signInSub')}</p>
 
       {error && (
         <div role="alert" className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
@@ -86,7 +88,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate={false}>
         <div>
-          <label htmlFor="login-email" className="label">Email</label>
+          <label htmlFor="login-email" className="label">{t('auth.email')}</label>
           <input
             id="login-email"
             type="email"
@@ -101,7 +103,10 @@ export default function Login() {
         </div>
 
         <div>
-          <label htmlFor="login-password" className="label">Password</label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="login-password" className="label">{t('auth.password')}</label>
+            <Link to="/forgot-password" className="mb-1 text-xs font-medium text-brand-600 hover:underline">{t('auth.forgot')}</Link>
+          </div>
           <div className="relative">
             <input
               id="login-password"
@@ -126,18 +131,18 @@ export default function Login() {
         </div>
 
         <button type="submit" disabled={loading} className="btn-primary h-11 w-full text-base">
-          {loading ? (<><Spinner size={18} /> <span className="text-white">Signing in…</span></>) : 'Sign in'}
+          {loading ? (<><Spinner size={18} /> <span className="text-white">{t('auth.signingIn')}</span></>) : t('auth.signIn')}
         </button>
       </form>
 
       <p className="mt-5 text-center text-sm text-slate-500">
-        New here?{' '}
-        <Link to="/register" className="font-medium text-brand-600 hover:underline">Create a citizen account</Link>
+        {t('auth.newHere')}{' '}
+        <Link to="/register" className="font-medium text-brand-600 hover:underline">{t('auth.createCitizen')}</Link>
       </p>
 
       <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Try a demo account</p>
-        <p className="mt-0.5 text-xs text-slate-500">Fills the form with synthetic demo credentials.</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('auth.demoTitle')}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{t('auth.demoHint')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {DEMO_ACCOUNTS.map((a) => (
             <button
@@ -153,7 +158,7 @@ export default function Login() {
       </div>
 
       <p className="mt-6 text-center text-xs text-slate-400">
-        <Link to="/public" className="hover:text-slate-600 hover:underline">View the public transparency dashboard</Link>
+        <Link to="/public" className="hover:text-slate-600 hover:underline">{t('auth.publicDashboard')}</Link>
       </p>
     </AuthShell>
   );

@@ -435,6 +435,24 @@ Cross-cutting UX: skeleton loading on every data page, explicit error panel with
 
 ---
 
+### Account security, languages, field work and more
+
+| Feature | Where | Notes |
+|---|---|---|
+| **Password reset** | `/forgot-password` -> email link -> `/reset-password` | One-time, 1-hour link. Only a SHA-256 hash of the token is stored; issuing a new link invalidates the old one; the endpoint answers identically for unknown emails. **Requires SMTP** (`SMTP_HOST`); without it the UI says reset by email is not enabled instead of offering a broken flow |
+| **Email verification** | banner in the app + `/verify-email` | Never blocks use of the app; shown only when the server can send email |
+| **Login lockout** | `POST /api/auth/login` | 5 wrong passwords lock the account for 15 minutes (a correct password during the lock is also refused); a reset clears it; lock events are audited. Responses never expose lockout fields |
+| **Hindi / Marathi interface** | language picker (app bar, auth pages, mobile drawer) | Citizen-facing screens, navigation, footer, and every status / priority / category label. English is the fallback for any untranslated string. Switching language re-renders the page, so an unsent draft is not preserved. Staff/admin screens and the landing page remain English |
+| **Complaint completeness hint** | report form | A transparent checklist (description detail, impact, pinned location, landmark, photo) with supportive suggestions. Explicitly **not AI** and never blocks submission |
+| **Field view** | `/officer/field` | Mobile-first: open tasks nearest-first (browser geolocation, never sent to the server), task map, one-tap Accept / Start, turn-by-turn Navigate |
+| **Recurring problems** | `/admin/recurring` | Places where a problem was fixed and then reported again within ~150 m (fixes, reopenings, status) |
+| **Resolution impact** | `/admin/recurring?tab=impact` | Complaints of the same kind 30 days before vs after each fix. Labelled an *observed comparison, not proof of cause* |
+| **CSV export** | complaints, audit log, SLA list, officer queue, recurring problems | UTF-8 with BOM (Devanagari opens correctly in Excel). Cells starting with `= + - @` are neutralised to prevent spreadsheet formula injection |
+| **Browser push notifications** | Profile -> Device notifications | Web Push (VAPID). Enabled only when `VAPID_*` keys are set; dead subscriptions are pruned automatically |
+| **DB certificate pinning** | `DB_SSL_CA` | When set, the database server certificate is verified, not merely encrypted |
+| **Multi-instance safe jobs** | scheduler | A MySQL advisory lock (`GET_LOCK`) ensures one instance runs each background job |
+| **Crash containment** | `ErrorBoundary` | A failing panel shows a calm message with retry instead of blanking the page |
+
 ## Roles & permissions
 
 Roles are `CITIZEN`, `OFFICER` (staff, department-scoped) and `ADMIN` (system administrator). A separate "department admin" role was deliberately not added: officers are scoped to their department and admins have global scope, which covers the needs without a schema/JWT change. **Backend authorisation is authoritative**; frontend role checks are only UX.
@@ -492,6 +510,9 @@ Demo accounts (password `Password123!`): `admin@civicconnect.demo`, `officer.roa
 | `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` | Image storage (server-side only) |
 | `NOMINATIM_BASE_URL` | Optional geocoding |
 | `CORS_ORIGIN` | Allowed frontend origin(s), comma-separated |
+| `FRONTEND_URL` | Public URL of the deployed frontend; used to build the links in password-reset / verification emails |
+| `DB_SSL_CA` | Optional. Database provider's CA certificate (PEM text or file path) - enables certificate **verification** |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional Web Push keys. Generate once with `npx web-push generate-vapid-keys`; push is disabled if unset |
 | `AUTO_MIGRATE` | **Default `true`**: pending migrations are applied at server start (tracked in `_migrations`). Set `false` to migrate manually |
 | `ENABLE_BACKGROUND_JOBS` | Default `true`; `false` disables the scheduler (e.g. multiple instances) |
 | `SMTP_HOST/PORT/USER/PASS/FROM`, `EMAIL_NOTIFY_TYPES` | Optional email channel; empty `SMTP_HOST` disables it |
@@ -509,6 +530,7 @@ Three ordered, tracked migrations in `backend/database/migrations/`:
 | `001_init.sql` | users, departments, wards, complaints, images, status history, embeddings, incidents, feedback, notifications |
 | `002_intelligence.sql` | AI enrichment columns, incident events, SLA escalations, reopenings, situation reports, admin-query log |
 | `003_civic_platform.sql` | **Additive only** — see below |
+| `004_auth_push.sql` | Additive: `users.{email_verified_at, failed_login_attempts, locked_until}`, tables `auth_tokens` (hashed one-time tokens) and `push_subscriptions` |
 
 **003 adds** tables `audit_logs`, `complaint_events`, `complaint_decisions`, `complaint_duplicates`, `human_reviews`, `sla_policies` (seeded with the four defaults), `escalation_events`, `ai_usage`, `ai_evaluations`, `job_runs`; columns `complaint_images.{phash, blur_score, brightness, width, height}` and `complaints.{sla_hours, review_status, ai_attempts}`; and composite indexes `(status, created_at)`, `(category, created_at)`, `(department_id, status)`, `(sla_status)`, `(review_required, review_status)`, plus an index on `phash`. **No existing data is modified or dropped.**
 
@@ -536,6 +558,10 @@ All routes are under `/api`, JSON, `Authorization: Bearer <jwt>`. Full request/r
 
 **Operations (admin)** — `GET /sla` · `PUT /sla/policies` · `GET /escalations` · `PATCH /escalations/:id/acknowledge` · `POST /escalations/run` · `GET /admin/audit-logs` · `GET /admin/ai-usage` · `GET /admin/ai-performance` · `POST /admin/evaluations/run` · `GET /admin/evaluations/:runId` · `GET /admin/observability` · `POST /admin/jobs/:name/run` · `GET /admin/search/semantic?q=` · `GET /admin/map-data?…&days=`
 
+**Account security & push** - `GET /auth/config` · `POST /auth/forgot-password` · `POST /auth/reset-password` · `POST /auth/verify-email` · `POST /auth/resend-verification` (auth) · `GET /notifications/push` · `POST /notifications/push/subscribe` · `POST /notifications/push/unsubscribe`
+
+**Analytics (admin)** - `GET /analytics/recurring?days&radius` · `GET /analytics/effectiveness?window`
+
 **Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
 
 Rate limits: 300 req / 15 min general; 20 / 15 min on login/register; **20 / min on AI-triggering endpoints** (`ai-assist`, `duplicate-check`, AI/semantic search, situation report, evaluations).
@@ -549,10 +575,17 @@ cd backend && npm test          # Jest + Supertest, --runInBand
 cd frontend && npx tsc --noEmit && npm run build
 ```
 
-**140 backend tests, all passing** (61 pre-existing + 79 new), including:
+**178 backend tests, all passing** (61 pre-existing + 117 new), plus **14 frontend unit tests** and **37 browser tests**, including:
 
 - *Unit:* evidence scoring, decision engine (safety floors, factor reconciliation, review gates, capped AI boosts), AI safety & parser hardening, robust-z anomaly scoring (surge / normal / sparse / robust-to-past-spike / insufficient data), Holt forecasting (unavailable cases, intervals, non-negative, backtest), DBSCAN, text similarity (incl. Devanagari), incident trend/extent, audit sanitisation, SLA snapshots, image sniffing, notification-channel failure isolation.
 - *Integration (real DB, AI mocked):* decision-trace persistence, citizen vs staff timeline visibility, review flows (correct → re-route + SLA + audit, approve, false-positive, department scoping, invalid input), corrected complaints not overwritten, duplicate suggestion → incident link → reject → confirm, **AI outage fallback + retry-job recovery**, prompt-injection review flag, SLA policy edit + audit, **escalation idempotency**, analytics authorisation and honest "insufficient data", filter injection rejection, evaluation storage, observability free of secrets, forged-image upload rejection.
+
+- *Production-parity:* `ansiQuotes.test.js` forces `sql_mode=ANSI_QUOTES` (as on Aiven) on every database connection and calls the admin/analytics endpoints - it exists because a double-quoted SQL literal once passed locally and failed in production.
+- *Security:* lockout, single-use / expiring / hashed reset and verification tokens, identical responses for known and unknown emails, push channel pruning, TLS options, safe error defaults, recurring/effectiveness analytics with constructed data, job advisory locks.
+
+**Frontend unit tests** (`cd frontend && npm test`, Vitest): completeness logic, geo helpers, and translation completeness (every English string exists in Hindi and Marathi; all enums translated; placeholders preserved).
+
+**Browser tests** (`cd frontend && npm run e2e`, Playwright - first time only: `npm run e2e:install`): run against a live frontend + API with a seeded database. They cover login/logout and errors, password toggle, forgot/reset pages, registration validation, language switching, **every admin page loading with no error panel and no console errors**, the SLA tabs, sidebar collapse, complaint detail panels, real **PDF and CSV downloads**, officer queue and field view, the full citizen report flow (quality hint, location, submit), citizen/officer access guards, and mobile checks (drawer, reaching the last menu link, no horizontal overflow). Point them at a deployment with `E2E_BASE_URL=https://your-app.vercel.app npm run e2e` (demo accounts via `E2E_ADMIN` / `E2E_OFFICER` / `E2E_CITIZEN`). To run locally: start the backend with a migrated + seeded database (use `NODE_ENV=test` so the rate limiters do not throttle the suite) and `npm run dev` in `frontend`.
 
 Tests need a MySQL database and the seeded demo users. **Run them against a local/throwaway database**, e.g. `DB_HOST=127.0.0.1 DB_NAME=bmc_test npm test` after `npm run migrate && npm run seed`.
 
@@ -564,7 +597,7 @@ Bcrypt password hashing · JWT with per-request user re-fetch (roles never trust
 
 **Rules:** never commit `.env`; never put keys in frontend code (only `VITE_API_BASE_URL`); rotate any credential that is ever pasted into a chat/issue/commit; use a throwaway DB for tests.
 
-Known hardening item: with `DB_SSL_MODE` set, TLS uses `rejectUnauthorized: false` (encrypted, not CA-verified) — pin your provider's CA for stricter production posture.
+Database TLS: with `DB_SSL_MODE` set the connection is encrypted; set `DB_SSL_CA` to the provider's CA certificate to also **verify** the server certificate. Login lockout (5 attempts / 15 min), hashed single-use reset tokens, and JSON rate-limit responses are described above. **Set `NODE_ENV=production` on the server**: stack traces are only ever returned when `NODE_ENV` is explicitly `development` or `test`.
 
 ---
 
@@ -856,7 +889,7 @@ it's baked in at build time, not read live.
 ## Limitations & honesty notes
 
 - **Seed/demo data, wards and SLA values are synthetic** application rules, not official BMC data or policy.
-- **The UI was not exercised in a real browser session in this build.** Verified instead: strict TypeScript (`tsc --noEmit` clean), a clean production build, 140 backend tests, live HTTP-level checks of the new endpoints, and a from-scratch server boot with migrations. Click through the main flows before a live demo (particularly the map layers and the new admin pages).
+- **Browser coverage:** the UI is exercised by automated Chromium tests (desktop and a phone viewport) and was visually inspected via screenshots, but not in Safari or Firefox, and not on a physical device. Still worth a manual click-through of the map layers and new admin pages before a live demo.
 - **Frontend scope.** Delivered: the command center, GIS command center, hotspot/anomaly/forecast/workload views, SLA & escalation center, AI performance/cost/health, audit log, review queue, complaint intelligence panels & timeline, incident intelligence, and richer complaint search. **Not built:** a redesigned citizen home page, a field-worker mobile view, TanStack Table (existing tables are simple and server-paginated), a command-palette global search, dedicated resource-intelligence / recurring-problem / resolution-effectiveness / infrastructure-health pages (their inputs exist — demand forecast table, `REPEATED_COMPLAINTS` escalations, hotspots — but there is no dedicated UI or backend model for intervention tracking), and an extended public dashboard. Real-time uses polling (30–120 s), not WebSockets.
 - **PDF export uses built-in Latin fonts**: Devanagari complaint text appears as a placeholder in PDFs (the English AI summary is included). Embedding a Devanagari font would fix this at the cost of a larger download.
 - **Metrics are per-instance and in-memory** (reset on restart); durable history is in MySQL.
@@ -867,6 +900,11 @@ it's baked in at build time, not read live.
 - **Text-only duplicate fallback** is weaker than the embedding path; it is deliberately stricter (must be within 150 m).
 - **Background jobs are in-process.** With multiple backend instances each would run them; set `ENABLE_BACKGROUND_JOBS=false` on all but one, or move to a real queue.
 - **Migrations on boot** are convenient for a single-instance deployment; for multi-instance production run `npm run migrate` as a release step and set `AUTO_MIGRATE=false`.
+- **Password reset needs email.** Without SMTP configured there is no self-service reset (the UI says so). There is no admin-issued reset link yet.
+- **PDF and Devanagari:** embedding a Devanagari font is not enough - the PDF library cannot shape Indic conjuncts and vowel signs, so the text would render incorrectly. Complaint text in those scripts therefore appears as a placeholder in PDFs, with the English AI summary beside it. CSV exports keep the original text.
+- **Translations** cover the citizen-facing screens; staff/admin screens and the landing page are English. Hindi and Marathi strings were written for this project and should be reviewed by a native speaker before wide release.
+- **Web Push** depends on browser support and on you generating VAPID keys; it was unit-tested with the push service mocked, not against a real push service.
+- **Resolution impact** is an observed before/after count comparison, not causal analysis.
 - **Cloudinary** uploads require your credentials and were not end-to-end verified against a live account in this session.
 - Before/after resolution verification and the officer copilot remain advisory; staff can always override. Moderation and evidence concerns are soft review flags, never automatic rejection.
 - `seed:complaints` uses templated text and bypasses the AI pipeline (so seeded complaints have no decision trace until re-analysed).

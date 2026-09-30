@@ -28,6 +28,7 @@ api.interceptors.response.use(
 
 export function getErrorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
   if (axios.isAxiosError(err)) {
+    if (err.response?.status === 429) return err.response?.data?.message || 'Too many requests. Please wait a moment and try again.';
     return err.response?.data?.message || fallback;
   }
   return fallback;

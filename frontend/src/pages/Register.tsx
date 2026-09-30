@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage, getErrorDetails } from '../services/api';
 import { AuthShell } from '../components/auth/AuthShell';
+import { useI18n } from '../i18n';
 import { Spinner } from '../components/common/Spinner';
 import { AlertIcon, CheckCircleIcon } from '../components/common/Icons';
 
@@ -29,6 +30,7 @@ function strength(pw: string): { score: number; label: string; bar: string } {
 
 export default function Register() {
   const { register } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -62,10 +64,9 @@ export default function Register() {
     <AuthShell
       mobileTitle="Create your account"
       mobileSubtitle="Report civic issues and track their resolution"
-      headline="Report it once. Follow it all the way to resolved."
     >
-      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Create your account</h2>
-      <p className="mt-1 text-sm text-slate-500">Free for citizens. Takes under a minute.</p>
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{t('auth.createAccount')}</h2>
+      <p className="mt-1 text-sm text-slate-500">{t('auth.createSub')}</p>
 
       {error && (
         <div role="alert" className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
@@ -76,24 +77,24 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="reg-name" className="label">Full name</label>
+          <label htmlFor="reg-name" className="label">{t('auth.fullName')}</label>
           <input id="reg-name" required minLength={2} maxLength={150} autoComplete="name" autoFocus className="input h-11" value={form.name} onChange={set('name')} placeholder="Your name" />
         </div>
 
         <div>
-          <label htmlFor="reg-email" className="label">Email</label>
+          <label htmlFor="reg-email" className="label">{t('auth.email')}</label>
           <input id="reg-email" type="email" required autoComplete="email" className="input h-11" value={form.email} onChange={set('email')} placeholder="you@example.com" />
         </div>
 
         <div>
           <label htmlFor="reg-phone" className="label">
-            Phone <span className="font-normal text-slate-400">(optional)</span>
+            {t('auth.phone')} <span className="font-normal text-slate-400">{t('auth.optional')}</span>
           </label>
           <input id="reg-phone" type="tel" inputMode="tel" minLength={7} maxLength={20} autoComplete="tel" className="input h-11" value={form.phone} onChange={set('phone')} placeholder="For status updates" />
         </div>
 
         <div>
-          <label htmlFor="reg-password" className="label">Password</label>
+          <label htmlFor="reg-password" className="label">{t('auth.password')}</label>
           <div className="relative">
             <input
               id="reg-password"
@@ -132,7 +133,7 @@ export default function Register() {
         </div>
 
         <div>
-          <label htmlFor="reg-confirm" className="label">Confirm password</label>
+          <label htmlFor="reg-confirm" className="label">{t('auth.confirmPassword')}</label>
           <input
             id="reg-confirm"
             type={showPassword ? 'text' : 'password'}
@@ -161,8 +162,8 @@ export default function Register() {
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-500">
-        Already have an account?{' '}
-        <Link to="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link>
+        {t('auth.alreadyHave')}{' '}
+        <Link to="/login" className="font-medium text-brand-600 hover:underline">{t('auth.signIn')}</Link>
       </p>
     </AuthShell>
   );

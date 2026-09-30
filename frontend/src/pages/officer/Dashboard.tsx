@@ -6,6 +6,7 @@ import { listAssigned } from '../../services/officer.service';
 import { ComplaintCard } from '../../components/complaint/ComplaintCard';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
+import { CsvButton } from '../../components/ui/CsvButton';
 import { PageHeader, QueryBoundary, PageSkeleton, fmtRemaining, fmtDate } from '../../components/ui/kit';
 import { PriorityBadge, StatusBadge, SlaBadge, CategoryBadge } from '../../components/common/Badge';
 import { ClipboardIcon, AlertIcon, ClockIcon, ShieldIcon, RefreshIcon } from '../../components/common/Icons';
@@ -46,7 +47,7 @@ export default function OfficerDashboard() {
       <PageHeader
         title={`Work queue${user ? ` · ${user.name.split(' ')[0]}` : ''}`}
         description="Complaints routed to your department, most urgent first."
-        actions={<button className="btn-secondary !py-1.5 text-xs" onClick={() => q.refetch()} disabled={q.isFetching}><RefreshIcon size={14} className={q.isFetching ? 'animate-spin' : ''} /> Refresh</button>}
+        actions={<><CsvButton label="Export queue (CSV)" filename={`work-queue-${new Date().toISOString().slice(0, 10)}.csv`} rows={open} columns={[{ header: 'Complaint ID', value: (c) => c.complaint_number }, { header: 'Category', value: (c) => c.category }, { header: 'Priority', value: (c) => c.priority_level }, { header: 'Status', value: (c) => c.status }, { header: 'SLA', value: (c) => c.sla_status }, { header: 'SLA deadline', value: (c) => c.sla_deadline }, { header: 'Address', value: (c) => c.address }, { header: 'Reported', value: (c) => c.created_at }]} /><button className="btn-secondary !py-1.5 text-xs" onClick={() => q.refetch()} disabled={q.isFetching}><RefreshIcon size={14} className={q.isFetching ? 'animate-spin' : ''} /> Refresh</button></>}
       />
 
       <div className="mt-5">

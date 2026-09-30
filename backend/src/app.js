@@ -54,9 +54,12 @@ app.get('/health', (req, res) => {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  // Production: 300 requests / 15 min / IP. Raised under test, where one IP drives a whole suite.
+  limit: env.nodeEnv === 'test' ? 100000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
+  // JSON like every other API error, so the UI can show it instead of a misleading fallback.
+  message: { success: false, message: 'Too many requests. Please wait a moment and try again.' },
 });
 app.use('/api', apiLimiter);
 

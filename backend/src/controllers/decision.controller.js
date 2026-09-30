@@ -72,11 +72,11 @@ const getDecisionTrace = asyncHandler(async (req, res) => {
         ? {
             category: decision.ai_output.category,
             subcategory: decision.ai_output.subcategory,
-            confidence: decision.ai_output.confidence,
-            urgency: decision.ai_output.urgency,
-            riskIndicators: decision.ai_output.risk_indicators,
-            locationRelevance: decision.ai_output.location_relevance,
-            explanationFactors: decision.ai_output.explanation_factors,
+            confidence: decision.ai_output.confidence ?? 0,
+            urgency: decision.ai_output.urgency || 'NORMAL',
+            riskIndicators: decision.ai_output.risk_indicators || [],
+            locationRelevance: decision.ai_output.location_relevance || null,
+            explanationFactors: decision.ai_output.explanation_factors || [],
             recommendedAction: decision.ai_output.recommended_action,
             severitySignals: decision.ai_output.severity_signals,
           }
@@ -92,7 +92,7 @@ const getDecisionTrace = asyncHandler(async (req, res) => {
       humanReviewRequired: !!decision.human_review_required,
       reviewReasons: decision.review_reasons || [],
       reviewStatus: complaint.review_status,
-      reviews,
+      reviews: reviews || [],
       note: 'Only auditable decision factors are shown - no model reasoning is stored.',
     },
   });

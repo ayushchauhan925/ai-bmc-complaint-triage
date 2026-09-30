@@ -1,6 +1,7 @@
 import React from 'react';
+import { tr } from '../../i18n';
 
-const STAGES = ['Received', 'Assigned', 'In progress', 'Resolved'];
+const STAGE_KEYS = ['progress.received', 'progress.assigned', 'progress.inProgress', 'progress.resolved'];
 
 // Maps the detailed internal status onto four citizen-friendly stages.
 export function stageFor(status: string): { index: number; label: string; closed: boolean } {
@@ -30,8 +31,9 @@ export function stageFor(status: string): { index: number; label: string; closed
 export function ProgressTracker({ status, compact = false }: { status: string; compact?: boolean }) {
   const stage = stageFor(status);
   if (stage.closed) {
-    return <p className="text-xs text-slate-500">This complaint was reviewed and closed.</p>;
+    return <p className="text-xs text-slate-500">{tr('progress.closed')}</p>;
   }
+  const STAGES = STAGE_KEYS.map((k) => tr(k));
   return (
     <div>
       <ol className="flex items-center gap-1" aria-label={`Progress: ${stage.label}`}>

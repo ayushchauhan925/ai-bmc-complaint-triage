@@ -88,7 +88,11 @@ export const SLA_STATUS_COLORS: Record<string, string> = {
   COMPLETED_AFTER_SLA: 'bg-orange-100 text-orange-700 border-orange-200',
 };
 
+import { trEnum } from '../i18n';
+
 export function formatCategory(category: string): string {
+  const translated = trEnum('category', category);
+  if (translated) return translated;
   return category
     .split('_')
     .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
@@ -96,8 +100,10 @@ export function formatCategory(category: string): string {
 }
 
 export function formatStatus(status: string): string {
+  const translated = trEnum('status', status);
+  if (translated) return translated;
   return status
     .split('_')
-    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .map((w) => (w === 'AI' ? 'AI' : w.charAt(0) + w.slice(1).toLowerCase()))
     .join(' ');
 }

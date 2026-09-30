@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { LanguageSwitcher } from '../../i18n';
 
 export interface SidebarLink {
   to: string;
@@ -129,6 +130,7 @@ export function MobileNav({ links, title = 'Menu' }: { links: SidebarLink[]; tit
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+              <LanguageSwitcher />
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close navigation menu"

@@ -121,7 +121,7 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
       {(trace) => {
         if (!trace.available) return <div className="card p-4"><h3 className="text-sm font-semibold text-slate-800">AI assessment</h3><div className="mt-3"><InsufficientData reason={trace.reason} /></div></div>;
         const band = BAND_LABEL[trace.evidence.band] ?? BAND_LABEL.WEAK;
-        const contributing = trace.factors.filter((f) => f.points !== 0 || f.source === 'SIMILARITY');
+        const contributing = (trace.factors ?? []).filter((f) => f.points !== 0 || f.source === 'SIMILARITY');
         return (
           <div className="space-y-4">
             <div className="card p-4">
@@ -146,7 +146,7 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
               {trace.humanReviewRequired && (
                 <div className="mt-3 rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm text-pink-800" role="note">
                   <p className="flex items-center gap-1.5 font-medium"><AlertIcon size={14} /> Human review requested</p>
-                  <ul className="mt-1 list-inside list-disc text-xs">{trace.reviewReasons.map((r) => <li key={r}>{r}</li>)}</ul>
+                  <ul className="mt-1 list-inside list-disc text-xs">{(trace.reviewReasons ?? []).map((r) => <li key={r}>{r}</li>)}</ul>
                 </div>
               )}
             </div>
@@ -166,10 +166,10 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
                     </li>
                   ))}
                 </ul>
-                {trace.ai && trace.ai.explanationFactors.length > 0 && (
+                {trace.ai && (trace.ai.explanationFactors?.length ?? 0) > 0 && (
                   <div className="mt-3 border-t border-slate-100 pt-3">
                     <p className="text-xs font-medium text-slate-500">What the AI noticed</p>
-                    <ul className="mt-1 list-inside list-disc text-xs text-slate-600">{trace.ai.explanationFactors.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    <ul className="mt-1 list-inside list-disc text-xs text-slate-600">{(trace.ai.explanationFactors ?? []).map((x, i) => <li key={i}>{x}</li>)}</ul>
                   </div>
                 )}
               </div>
@@ -177,9 +177,9 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
               <div className="card p-4">
                 <h3 className="text-sm font-semibold text-slate-800">Evidence</h3>
                 <div className="mt-2"><Meter value={trace.evidence.score} tone={band.tone} label={`Evidence strength: ${band.label}`} /></div>
-                {trace.evidence.indicators.length > 0 && (
+                {(trace.evidence.indicators?.length ?? 0) > 0 && (
                   <ul className="mt-3 space-y-1 text-sm text-slate-700">
-                    {trace.evidence.indicators.map((x) => <li key={x} className="flex items-center gap-1.5"><CheckCircleIcon size={13} className="text-green-600" /> {x}</li>)}
+                    {(trace.evidence.indicators ?? []).map((x) => <li key={x} className="flex items-center gap-1.5"><CheckCircleIcon size={13} className="text-green-600" /> {x}</li>)}
                   </ul>
                 )}
                 <QueryBoundary query={evQ} skeleton={null}>
@@ -202,11 +202,11 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
               </div>
             </div>
 
-            {trace.reviews.length > 0 && (
+            {(trace.reviews?.length ?? 0) > 0 && (
               <div className="card p-4">
                 <h3 className="text-sm font-semibold text-slate-800">Review history</h3>
                 <ul className="mt-2 divide-y divide-slate-100 text-sm">
-                  {trace.reviews.map((r) => (
+                  {(trace.reviews ?? []).map((r) => (
                     <li key={r.id} className="py-2">
                       <span className="font-medium text-slate-800">{r.action.replace(/_/g, ' ').toLowerCase()}</span> by {r.reviewer_name} · <span className="text-xs text-slate-400">{fmtDate(r.created_at)}</span>
                       {r.action === 'CORRECT' && (

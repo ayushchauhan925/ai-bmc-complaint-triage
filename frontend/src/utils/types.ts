@@ -7,6 +7,7 @@ export interface User {
   phone: string | null;
   role: Role;
   department_id: number | null;
+  email_verified_at?: string | null;
   created_at: string;
 }
 

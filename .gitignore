@@ -28,3 +28,8 @@ data/processed/*
 
 # Test coverage
 coverage/
+
+# Playwright output
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

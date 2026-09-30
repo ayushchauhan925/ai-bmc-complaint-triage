@@ -4,20 +4,21 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { listComplaints } from '../../services/complaint.service';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useI18n } from '../../i18n';
 import { ComplaintCard } from '../../components/complaint/ComplaintCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtDate } from '../../components/ui/kit';
 import { PlusCircleIcon, ClipboardIcon, CheckCircleIcon, ClockIcon, BellIcon, CameraIcon, LocationIcon, MapIcon } from '../../components/common/Icons';
 
 const TIPS = [
-  { icon: <CameraIcon size={16} />, text: 'Add a clear photo - it helps confirm the issue and speeds up routing.' },
-  { icon: <LocationIcon size={16} />, text: 'Pin the exact spot and mention a landmark so crews can find it.' },
-  { icon: <ClockIcon size={16} />, text: 'Say how long it has been a problem and who it affects.' },
+  { icon: <CameraIcon size={16} />, key: 'home.tip.photo' },
+  { icon: <LocationIcon size={16} />, key: 'home.tip.location' },
+  { icon: <ClockIcon size={16} />, key: 'home.tip.impact' },
 ];
 
-function greeting() {
+function greetingKey() {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? 'home.greet.morning' : h < 17 ? 'home.greet.afternoon' : 'home.greet.evening';
 }
 
 function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: string }) {
@@ -34,6 +35,7 @@ function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: st
 
 export default function CitizenHome() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const q = useQuery({ queryKey: ['my-complaints', 'home'], queryFn: () => listComplaints({ limit: 50 }) });
   const { notifications, markRead } = useNotifications(60000);
   const updates = notifications.slice(0, 4);
@@ -45,16 +47,16 @@ export default function CitizenHome() {
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-sm text-brand-200">{greeting()},</p>
+            <p className="text-sm text-brand-200">{t(greetingKey())},</p>
             <h1 className="mt-0.5 text-2xl font-semibold tracking-tight sm:text-3xl">{user?.name.split(' ')[0]}</h1>
-            <p className="mt-2 max-w-md text-sm text-brand-100">See something that needs fixing? Report it in under a minute and follow it until it is resolved.</p>
+            <p className="mt-2 max-w-md text-sm text-brand-100">{t('home.heroText')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/complaints/new" className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold text-brand-800 shadow-sm hover:bg-brand-50">
-              <PlusCircleIcon size={18} /> Report a problem
+              <PlusCircleIcon size={18} /> {t('home.report')}
             </Link>
             <Link to="/public" className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white ring-1 ring-inset ring-white/40 hover:bg-white/10">
-              <MapIcon size={16} /> City dashboard
+              <MapIcon size={16} /> {t('home.cityDashboard')}
             </Link>
           </div>
         </div>
@@ -70,27 +72,27 @@ export default function CitizenHome() {
             return (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <Metric icon={<ClipboardIcon size={18} />} label="Reported" value={all.length} tone="bg-brand-50 text-brand-600" />
-                  <Metric icon={<ClockIcon size={18} />} label="Active" value={active.length} tone="bg-amber-50 text-amber-600" />
-                  <Metric icon={<CheckCircleIcon size={18} />} label="In progress" value={inProgress.length} tone="bg-indigo-50 text-indigo-600" />
-                  <Metric icon={<CheckCircleIcon size={18} />} label="Resolved" value={resolved.length} tone="bg-green-50 text-green-600" />
+                  <Metric icon={<ClipboardIcon size={18} />} label={t('home.reported')} value={all.length} tone="bg-brand-50 text-brand-600" />
+                  <Metric icon={<ClockIcon size={18} />} label={t('home.active')} value={active.length} tone="bg-amber-50 text-amber-600" />
+                  <Metric icon={<CheckCircleIcon size={18} />} label={t('home.inProgress')} value={inProgress.length} tone="bg-indigo-50 text-indigo-600" />
+                  <Metric icon={<CheckCircleIcon size={18} />} label={t('home.resolved')} value={resolved.length} tone="bg-green-50 text-green-600" />
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
                   <section aria-labelledby="active-h">
                     <div className="flex items-center justify-between">
-                      <h2 id="active-h" className="text-sm font-semibold text-slate-800">Your active complaints</h2>
-                      <Link to="/my-complaints" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>
+                      <h2 id="active-h" className="text-sm font-semibold text-slate-800">{t('home.activeComplaints')}</h2>
+                      <Link to="/my-complaints" className="text-sm font-medium text-brand-600 hover:underline">{t('common.viewAll')}</Link>
                     </div>
                     <div className="mt-3">
                       {all.length === 0 ? (
                         <EmptyState
-                          title="No complaints yet"
-                          description="Report your first civic issue - it is triaged and routed automatically."
-                          action={<Link to="/complaints/new" className="btn-primary">Report a problem</Link>}
+                          title={t('home.noneTitle')}
+                          description={t('home.noneText')}
+                          action={<Link to="/complaints/new" className="btn-primary">{t('home.report')}</Link>}
                         />
                       ) : active.length === 0 ? (
-                        <EmptyState title="Nothing pending" description="All your complaints are resolved. Thank you for helping improve the city." />
+                        <EmptyState title={t('home.allResolvedTitle')} description={t('home.allResolvedText')} />
                       ) : (
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {active.slice(0, 6).map((c) => <ComplaintCard key={c.id} complaint={c} />)}
@@ -101,9 +103,9 @@ export default function CitizenHome() {
 
                   <aside className="space-y-6">
                     <section className="card p-4" aria-labelledby="upd-h">
-                      <h2 id="upd-h" className="flex items-center gap-2 text-sm font-semibold text-slate-800"><BellIcon size={16} /> Latest updates</h2>
+                      <h2 id="upd-h" className="flex items-center gap-2 text-sm font-semibold text-slate-800"><BellIcon size={16} /> {t('home.updates')}</h2>
                       {updates.length === 0 ? (
-                        <p className="mt-3 text-sm text-slate-400">No updates yet. We will notify you when something changes.</p>
+                        <p className="mt-3 text-sm text-slate-400">{t('home.noUpdates')}</p>
                       ) : (
                         <ul className="mt-3 divide-y divide-slate-100">
                           {updates.map((n) => (
@@ -127,12 +129,12 @@ export default function CitizenHome() {
                     </section>
 
                     <section className="card p-4" aria-labelledby="tips-h">
-                      <h2 id="tips-h" className="text-sm font-semibold text-slate-800">Get faster resolution</h2>
+                      <h2 id="tips-h" className="text-sm font-semibold text-slate-800">{t('home.tipsTitle')}</h2>
                       <ul className="mt-3 space-y-3">
-                        {TIPS.map((t) => (
-                          <li key={t.text} className="flex gap-2.5 text-sm text-slate-600">
-                            <span className="mt-0.5 shrink-0 text-brand-600">{t.icon}</span>
-                            {t.text}
+                        {TIPS.map((tip) => (
+                          <li key={tip.key} className="flex gap-2.5 text-sm text-slate-600">
+                            <span className="mt-0.5 shrink-0 text-brand-600">{tip.icon}</span>
+                            {t(tip.key)}
                           </li>
                         ))}
                       </ul>

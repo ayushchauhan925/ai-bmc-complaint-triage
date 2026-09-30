@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
+import { ForgotPassword, ResetPassword, VerifyEmail } from './pages/AccountRecovery';
 import Profile from './pages/Profile';
 import ComplaintDetails from './pages/ComplaintDetails';
 import PublicDashboard from './pages/PublicDashboard';
@@ -27,6 +28,7 @@ const Operations = lazy(() => import('./pages/admin/Operations'));
 const SlaEscalations = lazy(() => import('./pages/admin/SlaEscalations'));
 const AiSystem = lazy(() => import('./pages/admin/AiSystem'));
 const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
+const Recurring = lazy(() => import('./pages/admin/Recurring'));
 import AdminIncidents from './pages/admin/Incidents';
 import AdminIncidentDetails from './pages/admin/IncidentDetails';
 import AdminReviewQueue from './pages/admin/ReviewQueue';
@@ -35,6 +37,7 @@ import IntelligenceCenter from './pages/admin/IntelligenceCenter';
 import { OfficerLayout } from './components/layout/OfficerLayout';
 import OfficerDashboard from './pages/officer/Dashboard';
 import OfficerAllComplaints from './pages/officer/AllComplaints';
+const FieldView = lazy(() => import('./pages/officer/FieldView'));
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -54,6 +57,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/public" element={<PublicDashboard />} />
 
       <Route path="/" element={<RootRedirect />}>
@@ -90,6 +96,7 @@ export default function App() {
         <Route path="/admin/sla" element={<SlaEscalations />} />
         <Route path="/admin/ai" element={<AiSystem />} />
         <Route path="/admin/audit" element={<AuditLog />} />
+        <Route path="/admin/recurring" element={<Recurring />} />
       </Route>
 
       <Route
@@ -101,6 +108,7 @@ export default function App() {
       >
         <Route path="/officer" element={<OfficerDashboard />} />
         <Route path="/officer/all" element={<OfficerAllComplaints />} />
+        <Route path="/officer/field" element={<Suspense fallback={<PageLoader />}><FieldView /></Suspense>} />
       </Route>
 
       {/* Shared complaint detail + profile, reachable by any authenticated role via their own layout */}

@@ -6,6 +6,7 @@ import * as platform from '../../services/platform.service';
 import { PriorityBadge, StatusBadge, CategoryBadge, SlaBadge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PdfButton } from '../../components/ui/PdfButton';
+import { CsvButton } from '../../components/ui/CsvButton';
 import { complaintListReport } from '../../utils/pdf';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtRemaining } from '../../components/ui/kit';
 import { CATEGORIES, COMPLAINT_STATUSES, PRIORITY_LEVELS, SLA_STATUSES, formatStatus, formatCategory } from '../../utils/constants';
@@ -83,7 +84,7 @@ export default function AdminComplaints() {
       <PageHeader
         title="Complaints"
         description="Search by text, ID, location, citizen, incident, department, status, SLA or date."
-        actions={!semantic && <PdfButton label="Export page (PDF)" disabled={!list.data?.rows.length} build={() => complaintListReport('Complaints', `${list.data!.total} matching complaint(s); showing page ${page}. Filters: ${Object.entries(debounced).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, list.data!.rows)} />}
+        actions={!semantic && <><CsvButton label="Export page (CSV)" filename={`complaints-${new Date().toISOString().slice(0, 10)}.csv`} rows={list.data?.rows} columns={[{ header: 'Complaint ID', value: (c) => c.complaint_number }, { header: 'Category', value: (c) => c.category }, { header: 'Priority', value: (c) => c.priority_level }, { header: 'Status', value: (c) => c.status }, { header: 'SLA', value: (c) => c.sla_status }, { header: 'SLA deadline', value: (c) => c.sla_deadline }, { header: 'Department', value: (c) => c.department_name }, { header: 'Incident', value: (c) => c.incident_id }, { header: 'Address', value: (c) => c.address }, { header: 'Reported', value: (c) => c.created_at }, { header: 'Resolved', value: (c) => c.resolved_at }]} /><PdfButton label="Export page (PDF)" disabled={!list.data?.rows.length} build={() => complaintListReport('Complaints', `${list.data!.total} matching complaint(s); showing page ${page}. Filters: ${Object.entries(debounced).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, list.data!.rows)} /></>}
       />
 
       <div className="mt-4 space-y-2">

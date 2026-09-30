@@ -1,20 +1,26 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { useI18n } from '../../i18n';
+import { VerifyEmailBanner } from '../common/VerifyEmailBanner';
 import { Footer } from './Footer';
 import { Sidebar, MobileNav } from './Sidebar';
-import { HomeIcon, ClipboardIcon, UserIcon } from '../common/Icons';
+import { HomeIcon, ClipboardIcon, UserIcon, LocationIcon } from '../common/Icons';
 
-const links = [
-  { to: '/officer', label: 'Assigned', icon: <HomeIcon size={18} />, end: true },
-  { to: '/officer/all', label: 'All Complaints', icon: <ClipboardIcon size={18} /> },
-  { to: '/profile', label: 'Profile', icon: <UserIcon size={18} /> },
+const buildLinks = (t: (k: string) => string) => [
+  { to: '/officer', label: t('nav.assigned'), icon: <HomeIcon size={18} />, end: true },
+  { to: '/officer/field', label: t('nav.fieldView'), icon: <LocationIcon size={18} /> },
+  { to: '/officer/all', label: t('nav.allComplaints'), icon: <ClipboardIcon size={18} /> },
+  { to: '/profile', label: t('nav.profile'), icon: <UserIcon size={18} /> },
 ];
 
 export function OfficerLayout({ children }: { children?: React.ReactNode }) {
+  const { t } = useI18n();
+  const links = buildLinks(t);
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
+      <VerifyEmailBanner />
       <div className="flex">
         <Sidebar links={links} title="Officer" />
         <main className="flex min-h-[calc(100vh-56px)] min-w-0 flex-1 flex-col overflow-x-hidden pb-20 md:pb-0">

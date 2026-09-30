@@ -2,7 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/ui/kit';
-import { CheckCircleIcon } from '../components/common/Icons';
+import { CheckCircleIcon, BellIcon } from '../components/common/Icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { currentSubscription, disablePush, enablePush, getPushStatus, pushSupported } from '../utils/push';
+import { getErrorMessage } from '../services/api';
 
 const ROLE_INFO: Record<string, { label: string; cls: string; can: string[] }> = {
   CITIZEN: {
@@ -21,6 +24,43 @@ const ROLE_INFO: Record<string, { label: string; cls: string; can: string[] }> =
     can: ['Command center, GIS map, analytics and forecasts', 'Review, correct and assign any complaint', 'Manage SLA targets and escalations', 'AI performance, audit log and system health'],
   },
 };
+
+function DeviceNotifications() {
+  const qc = useQueryClient();
+  const status = useQuery({ queryKey: ['push-status'], queryFn: getPushStatus });
+  const sub = useQuery({ queryKey: ['push-sub'], queryFn: currentSubscription });
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  if (!pushSupported() || !status.data?.enabled) return null;
+  const on = !!sub.data;
+
+  const toggle = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      if (on) await disablePush();
+      else await enablePush(status.data!.publicKey!);
+      await qc.invalidateQueries({ queryKey: ['push-sub'] });
+    } catch (err) {
+      setError(err instanceof Error && !('response' in err) ? err.message : getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card mt-4 p-6">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800"><BellIcon size={16} /> Device notifications</h3>
+      <p className="mt-1 text-sm text-slate-500">Get a notification on this device when your complaint changes status or is resolved.</p>
+      <button onClick={toggle} disabled={busy} className={on ? 'btn-secondary mt-4 text-sm' : 'btn-primary mt-4 text-sm'}>
+        {busy ? 'Working…' : on ? 'Turn off on this device' : 'Turn on for this device'}
+      </button>
+      {on && <p className="mt-2 text-xs text-green-700">On for this browser.</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -56,6 +96,8 @@ export default function Profile() {
           </dl>
         </div>
       </div>
+
+      <DeviceNotifications />
 
       <div className="card mt-4 p-6">
         <h3 className="text-sm font-semibold text-slate-800">What you can do</h3>

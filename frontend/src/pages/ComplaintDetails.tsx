@@ -19,6 +19,7 @@ import { EvidenceIntelligence } from '../components/complaint/EvidenceIntelligen
 import { ResolutionVerificationCard } from '../components/complaint/ResolutionVerificationCard';
 import { ReopenDialog } from '../components/complaint/ReopenDialog';
 import { OfficerCopilotPanel } from '../components/complaint/OfficerCopilotPanel';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { SlaPanel, ComplaintTimeline, InsightsPanel, RelatedComplaints, ReviewPanel } from '../components/complaint/Intelligence';
 import { getErrorMessage } from '../services/api';
 import { formatCategory } from '../utils/constants';
@@ -119,8 +120,8 @@ export default function ComplaintDetails() {
 
       {isStaff && (
         <div className="mt-4 space-y-4">
-          <InsightsPanel complaintId={complaint.id} />
-          <RelatedComplaints complaintId={complaint.id} canAct onChanged={load} />
+          <ErrorBoundary label="The AI assessment"><InsightsPanel complaintId={complaint.id} /></ErrorBoundary>
+          <ErrorBoundary label="Related complaints"><RelatedComplaints complaintId={complaint.id} canAct onChanged={load} /></ErrorBoundary>
         </div>
       )}
 

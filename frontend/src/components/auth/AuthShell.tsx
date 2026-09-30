@@ -2,12 +2,13 @@ import React from 'react';
 import { Logo } from '../common/Logo';
 import { Footer } from '../layout/Footer';
 import { ShieldIcon, MapIcon, BoltIcon, ClockIcon } from '../common/Icons';
+import { LanguageSwitcher, useI18n } from '../../i18n';
 
 const HIGHLIGHTS = [
-  { icon: <BoltIcon size={18} />, title: 'AI-assisted triage', text: 'Reports in English, Hindi, Hinglish or Marathi are understood, classified and routed to the right department.' },
-  { icon: <ShieldIcon size={18} />, title: 'Explainable decisions', text: 'Every priority shows the evidence and factors behind it, and staff can review or correct it.' },
-  { icon: <MapIcon size={18} />, title: 'Geographic intelligence', text: 'Duplicate reports are grouped into incidents; hotspots and unusual surges are surfaced early.' },
-  { icon: <ClockIcon size={18} />, title: 'Accountable response', text: 'Clear deadlines, escalation rules and a transparent timeline from report to resolution.' },
+  { icon: <BoltIcon size={18} />, key: 'ai' },
+  { icon: <ShieldIcon size={18} />, key: 'explain' },
+  { icon: <MapIcon size={18} />, key: 'geo' },
+  { icon: <ClockIcon size={18} />, key: 'acc' },
 ];
 
 /**
@@ -18,7 +19,7 @@ export function AuthShell({
   children,
   mobileTitle,
   mobileSubtitle,
-  headline = "From a citizen's report to a resolved issue — faster, clearer, accountable.",
+  headline,
   onLogoClick,
   overlay,
 }: {
@@ -29,6 +30,7 @@ export function AuthShell({
   onLogoClick?: () => void;
   overlay?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const logoButton = (child: React.ReactNode, ring: string) => (
     <button
       type="button"
@@ -71,14 +73,14 @@ export function AuthShell({
           </div>
 
           <div className="relative max-w-lg">
-            <h2 className="text-3xl font-semibold leading-tight tracking-tight">{headline}</h2>
+            <h2 className="text-3xl font-semibold leading-tight tracking-tight">{headline ?? t('auth.headline')}</h2>
             <ul className="mt-9 space-y-5">
               {HIGHLIGHTS.map((h) => (
-                <li key={h.title} className="flex gap-4">
+                <li key={h.key} className="flex gap-4">
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-brand-100 ring-1 ring-white/15">{h.icon}</span>
                   <div>
-                    <p className="text-sm font-semibold">{h.title}</p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-brand-200">{h.text}</p>
+                    <p className="text-sm font-semibold">{t(`auth.hl.${h.key}.title`)}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-brand-200">{t(`auth.hl.${h.key}.text`)}</p>
                   </div>
                 </li>
               ))}
@@ -88,7 +90,8 @@ export function AuthShell({
           <p className="relative text-xs text-brand-300">AI proposes, deterministic rules decide.</p>
         </aside>
 
-        <main className="flex flex-1 items-center justify-center bg-slate-50 px-4 py-10 sm:px-8 lg:bg-white">
+        <main className="relative flex flex-1 items-center justify-center bg-slate-50 px-4 py-10 sm:px-8 lg:bg-white">
+          <LanguageSwitcher className="absolute right-4 top-4" />
           <div className="w-full max-w-md">
             <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
               {logoButton(<Logo size={48} />, 'focus-visible:ring-brand-400')}

@@ -5,6 +5,7 @@ import * as platform from '../../services/platform.service';
 import { getErrorMessage } from '../../services/api';
 import { PageHeader, QueryBoundary, Tabs, PageSkeleton, CardSkeleton, InsufficientData, fmtDate, fmtRemaining, pct } from '../../components/ui/kit';
 import { PdfButton } from '../../components/ui/PdfButton';
+import { CsvButton } from '../../components/ui/CsvButton';
 import { slaReport } from '../../utils/pdf';
 import { PriorityBadge, SlaBadge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -37,7 +38,7 @@ function SlaTab() {
             <div className="card overflow-x-auto p-0">
               <div className="flex items-center justify-between px-4 py-3">
                 <h2 className="text-sm font-semibold text-slate-800">Needs attention ({rows.length})</h2>
-                <PdfButton label="Export PDF" build={() => slaReport(s)} />
+                <span className="flex gap-2"><CsvButton filename={`sla-at-risk-${new Date().toISOString().slice(0, 10)}.csv`} rows={rows} columns={[{ header: 'Complaint ID', value: (c) => c.complaint_number }, { header: 'Category', value: (c) => c.category }, { header: 'Priority', value: (c) => c.priority_level }, { header: 'Department', value: (c) => c.department_name }, { header: 'SLA status', value: (c) => c.sla_status }, { header: 'Deadline', value: (c) => c.sla_deadline }, { header: 'Minutes remaining', value: (c) => (c.sla.remainingMs === null ? '' : Math.round(c.sla.remainingMs / 60000)) }]} /><PdfButton label="Export PDF" build={() => slaReport(s)} /></span>
                 <label className="text-xs text-slate-500">Sort <select className="input ml-1 inline-block w-auto !py-1" value={sort} onChange={(e) => setSort(e.target.value as 'deadline' | 'priority')}><option value="deadline">Time remaining</option><option value="priority">Priority</option></select></label>
               </div>
               {rows.length === 0 ? <div className="p-6"><EmptyState title="Nothing at risk" description="No open complaint is approaching or past its SLA." /></div> : (

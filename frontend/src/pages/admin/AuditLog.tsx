@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as platform from '../../services/platform.service';
 import { PdfButton } from '../../components/ui/PdfButton';
+import { CsvButton } from '../../components/ui/CsvButton';
 import { auditReport } from '../../utils/pdf';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtDate } from '../../components/ui/kit';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -30,7 +31,7 @@ export default function AuditLog() {
       <PageHeader
         title="Audit log"
         description="Who did what, when, and what changed. Secrets are never stored; values shown are sanitised."
-        actions={<PdfButton label="Export page (PDF)" disabled={!q.data?.rows.length} build={() => auditReport(`${q.data!.total} matching entries; showing page ${page}. Filters: ${Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, q.data!.rows)} />}
+        actions={<><CsvButton label="Export page (CSV)" filename={`audit-log-${new Date().toISOString().slice(0, 10)}.csv`} rows={q.data?.rows} columns={[{ header: 'When', value: (r) => r.created_at }, { header: 'Actor', value: (r) => r.actor_name ?? r.actor_role }, { header: 'Role', value: (r) => r.actor_role }, { header: 'Action', value: (r) => r.action }, { header: 'Entity', value: (r) => r.entity_type }, { header: 'Entity ID', value: (r) => r.entity_id }, { header: 'Before', value: (r) => (r.previous_value ? JSON.stringify(r.previous_value) : '') }, { header: 'After', value: (r) => (r.new_value ? JSON.stringify(r.new_value) : '') }]} /><PdfButton label="Export page (PDF)" disabled={!q.data?.rows.length} build={() => auditReport(`${q.data!.total} matching entries; showing page ${page}. Filters: ${Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, q.data!.rows)} /></>}
       />
       <div className="mt-4 flex flex-wrap gap-2">
         <select aria-label="Entity type" className="input w-auto" value={filters.entity_type} onChange={(e) => set('entity_type', e.target.value)}>

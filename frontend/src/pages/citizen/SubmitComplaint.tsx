@@ -6,11 +6,14 @@ import { GuidedAssistant } from '../../components/complaint/GuidedAssistant';
 import { DuplicateWarning } from '../../components/complaint/DuplicateWarning';
 import { createComplaint } from '../../services/complaint.service';
 import { getErrorMessage, getErrorDetails } from '../../services/api';
+import { useI18n } from '../../i18n';
+import { QualityHint } from '../../components/complaint/QualityHint';
 
 const MAX_IMAGES = 5;
 
 export default function SubmitComplaint() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -32,7 +35,7 @@ export default function SubmitComplaint() {
     e.preventDefault();
     setError('');
     if (!location) {
-      setError('Please select a location on the map or use your current location.');
+      setError(t('submit.needLocation'));
       return;
     }
     setSubmitting(true);
@@ -54,21 +57,22 @@ export default function SubmitComplaint() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <h1 className="text-xl font-semibold text-slate-900">Report a Civic Problem</h1>
+      <h1 className="text-xl font-semibold text-slate-900">{t('submit.title')}</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Describe the issue in English, Hindi, Hinglish or Marathi - our AI will classify and route it automatically.
+        {t('submit.sub')}
       </p>
 
       <form onSubmit={handleSubmit} className="card mt-6 space-y-5 p-6">
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
         <div>
-          <label className="label">What's the issue?</label>
+          <label className="label" htmlFor="sc-description">{t('submit.whatIssue')}</label>
           <textarea
+            id="sc-description"
             required
             rows={4}
             className="input"
-            placeholder='e.g. "School ke bahar bahut bada gaddha hai, baarish mein pani bhar jata hai."'
+            placeholder={t('submit.placeholder')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -78,7 +82,7 @@ export default function SubmitComplaint() {
         </div>
 
         <div>
-          <label className="label">Photos (optional, up to {MAX_IMAGES})</label>
+          <label className="label">{t('submit.photos', { n: MAX_IMAGES })}</label>
           <div className="flex flex-wrap gap-3">
             {previews.map((src, idx) => (
               <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200">
@@ -95,7 +99,7 @@ export default function SubmitComplaint() {
             {images.length < MAX_IMAGES && (
               <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-brand-400 hover:text-brand-500">
                 <CameraIcon size={20} />
-                <span className="text-[10px]">Add photo</span>
+                <span className="text-[10px]">{t('submit.addPhoto')}</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -109,26 +113,29 @@ export default function SubmitComplaint() {
         </div>
 
         <div>
-          <label className="label">Location</label>
+          <label className="label">{t('submit.location')}</label>
           <LocationPicker value={location} onChange={(lat, lng) => setLocation({ lat, lng })} />
         </div>
 
         <div>
-          <label className="label">Address / landmark (optional)</label>
+          <label className="label" htmlFor="sc-address">{t('submit.address')}</label>
           <input
+            id="sc-address"
             className="input"
-            placeholder="e.g. Near ABC School, Demo Ward"
+            placeholder={t('submit.addressPh')}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
         </div>
+
+        <QualityHint description={description} address={address} hasLocation={!!location} photoCount={images.length} />
 
         <div className="border-t border-slate-100 pt-4">
           <DuplicateWarning description={description} location={location} />
         </div>
 
         <button type="submit" disabled={submitting} className="btn-primary w-full py-3">
-          {submitting ? 'Analyzing with AI - this can take a few seconds...' : 'Submit Complaint'}
+          {submitting ? t('submit.analyzing') : t('submit.submit')}
         </button>
       </form>
     </div>

@@ -1,13 +1,14 @@
 import React from 'react';
 import { PRIORITY_COLORS, STATUS_COLORS, SLA_STATUS_COLORS, formatStatus, formatCategory } from '../../utils/constants';
 import type { PriorityLevel } from '../../utils/constants';
+import { trEnum } from '../../i18n';
 
 export function Badge({ className, children }: { className?: string; children: React.ReactNode }) {
   return <span className={`badge border ${className || 'bg-slate-100 text-slate-600 border-slate-200'}`}>{children}</span>;
 }
 
 export function PriorityBadge({ level }: { level: PriorityLevel | string }) {
-  return <Badge className={PRIORITY_COLORS[level as PriorityLevel]}>{level}</Badge>;
+  return <Badge className={PRIORITY_COLORS[level as PriorityLevel]}>{trEnum('priority', level) ?? level}</Badge>;
 }
 
 export function StatusBadge({ status }: { status: string }) {

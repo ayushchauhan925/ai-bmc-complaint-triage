@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../hooks/useNotifications';
+import { LanguageSwitcher, useI18n } from '../../i18n';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -11,6 +12,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const rightRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   // Close open menus on outside click or Escape.
   useEffect(() => {
@@ -39,6 +41,7 @@ export function Navbar() {
 
         {user && (
           <div className="flex items-center gap-3" ref={rightRef}>
+            <LanguageSwitcher className="hidden sm:inline-flex" />
             <div className="relative">
               <button
                 aria-haspopup="true"
@@ -108,7 +111,7 @@ export function Navbar() {
                     onClick={() => setMenuOpen(false)}
                     className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
-                    Profile
+                    {t('nav.profile')}
                   </Link>
                   <button
                     onClick={() => {
@@ -117,7 +120,7 @@ export function Navbar() {
                     }}
                     className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                   >
-                    Log out
+                    {t('nav.logout')}
                   </button>
                 </div>
               )}

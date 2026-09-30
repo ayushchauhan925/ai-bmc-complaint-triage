@@ -8,6 +8,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<User>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -45,6 +46,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return newUser;
   };
 
+  const refreshUser = async () => {
+    try {
+      const fresh = await authService.me();
+      localStorage.setItem('user', JSON.stringify(fresh));
+      setUser(fresh);
+    } catch {
+      /* keep the cached user; a 401 is handled by the API interceptor */
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -52,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>{children}</AuthContext.Provider>
   );
 }
 
