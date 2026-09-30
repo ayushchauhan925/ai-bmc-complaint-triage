@@ -5,6 +5,8 @@ const incidentEventModel = require('../models/incidentEvent.model');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const incidentIntelligence = require('../services/complaint/incidentIntelligence.service');
+const auditService = require('../services/audit/audit.service');
 
 const list = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status, department_id } = req.query;
@@ -26,7 +28,8 @@ const getOne = asyncHandler(async (req, res) => {
   const complaintsWithImages = await Promise.all(
     complaints.map(async (c) => ({ ...c, images: await complaintModel.getImages(c.id) }))
   );
-  res.status(200).json({ success: true, data: { incident, complaints: complaintsWithImages, timeline } });
+  const intelligence = await incidentIntelligence.getIncidentIntelligence(incident, complaints);
+  res.status(200).json({ success: true, data: { incident, complaints: complaintsWithImages, timeline, intelligence } });
 });
 
 const create = asyncHandler(async (req, res) => {
@@ -58,7 +61,9 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { status } = req.body;
   if (status) {
+    const before = await incidentModel.findById(req.params.id);
     await incidentModel.updateStatus(req.params.id, status, req.user.id);
+    await auditService.record({ actor: req.user, action: 'INCIDENT_STATUS_CHANGED', entityType: 'incident', entityId: req.params.id, previous: { status: before?.status }, next: { status } });
   }
   const incident = await incidentModel.findById(req.params.id);
   res.status(200).json({ success: true, data: { incident } });
@@ -120,6 +125,7 @@ const merge = asyncHandler(async (req, res) => {
   }
 
   await incidentModel.mergeInto(targetId, source_incident_id, req.user.id);
+  await auditService.record({ actor: req.user, action: 'INCIDENT_MERGED', entityType: 'incident', entityId: targetId, next: { sourceIncidentId: source_incident_id } });
   logger.info('Incidents merged.', { targetId, sourceId: source_incident_id, actorId: req.user.id });
 
   const incident = await incidentModel.findById(targetId);

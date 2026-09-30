@@ -6,6 +6,9 @@ const officerRoutes = require('./officer.routes');
 const incidentRoutes = require('./incident.routes');
 const notificationRoutes = require('./notification.routes');
 const publicRoutes = require('./public.routes');
+const analyticsRoutes = require('./analytics.routes');
+const slaRoutes = require('./sla.routes');
+const escalationRoutes = require('./escalation.routes');
 
 const router = express.Router();
 
@@ -16,6 +19,9 @@ router.use('/officer', officerRoutes);
 router.use('/incidents', incidentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/public', publicRoutes);
+router.use('/analytics', analyticsRoutes);
+router.use('/sla', slaRoutes);
+router.use('/escalations', escalationRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'API is healthy.' });

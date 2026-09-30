@@ -11,6 +11,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { ROLES, DUPLICATE_DETECTION } = require('../utils/constants');
 const logger = require('../utils/logger');
+const auditService = require('../services/audit/audit.service');
 
 function projectDuplicates(related) {
   return related.map((r) => ({
@@ -59,7 +60,7 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const analyze = asyncHandler(async (req, res) => {
-  await runAnalysisPipeline(req.params.id);
+  await runAnalysisPipeline(req.params.id, { force: true });
   const complaint = await complaintService.getComplaintDetail(req.params.id);
   res.status(200).json({ success: true, data: { complaint } });
 });
@@ -207,7 +208,17 @@ const getOne = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
+  const before = await complaintModel.findById(req.params.id);
+  if (!before) throw new AppError('Complaint not found.', 404);
   await complaintModel.update(req.params.id, req.body);
+  await auditService.record({
+    actor: req.user,
+    action: 'COMPLAINT_UPDATED',
+    entityType: 'complaint',
+    entityId: req.params.id,
+    previous: Object.fromEntries(Object.keys(req.body).map((k) => [k, before[k]])),
+    next: req.body,
+  });
   const complaint = await complaintService.getComplaintDetail(req.params.id);
   res.status(200).json({ success: true, data: { complaint } });
 });

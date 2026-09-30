@@ -2,6 +2,7 @@ const app = require('./app');
 const env = require('./config/env');
 const { pool, testConnection } = require('./config/db');
 const logger = require('./utils/logger');
+const scheduler = require('./services/jobs/scheduler');
 
 async function start() {
   try {
@@ -16,11 +17,22 @@ async function start() {
     process.exit(1);
   }
 
+  if (env.autoMigrate) {
+    try {
+      // eslint-disable-next-line global-require
+      await require('../database/migrate').run();
+    } catch (err) {
+      logger.error('AUTO_MIGRATE failed; refusing to start against an unmigrated schema.', { error: err.message });
+      process.exit(1);
+    }
+  }
+
   // Render (and most PaaS hosts) sit behind a load balancer and route to the container
   // over an internal network - binding explicitly to 0.0.0.0 (rather than relying on the
   // platform-specific default) ensures the app is reachable regardless of host.
   const server = app.listen(env.port, '0.0.0.0', () => {
     logger.info(`Server listening on port ${env.port} (${env.nodeEnv})`);
+    if (env.jobsEnabled) scheduler.start();
   });
 
   server.on('error', (err) => {
@@ -36,6 +48,7 @@ async function start() {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`${signal} received, shutting down gracefully.`);
+    scheduler.stop();
 
     server.close(async () => {
       try {

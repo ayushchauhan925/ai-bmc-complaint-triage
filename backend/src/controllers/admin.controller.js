@@ -7,10 +7,18 @@ const notificationService = require('../services/notification/notification.servi
 const analyticsService = require('../services/analytics/analytics.service');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
+const auditService = require('../services/audit/audit.service');
+const timeline = require('../services/complaint/timeline.service');
 
 const listComplaints = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, category, priority_level, department_id, ward_id, search, review_required } = req.query;
-  const filters = { status, category, priority_level, search };
+  const {
+    page = 1, limit = 20, status, category, priority_level, department_id, ward_id, search, review_required,
+    sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to,
+  } = req.query;
+  const filters = { status, category, priority_level, search, sla_status, citizen, date_from, date_to };
+  if (incident_id) filters.incident_id = Number(incident_id);
+  if (officer_id) filters.officer_id = Number(officer_id);
+  if (complaint_id) filters.complaint_id = Number(complaint_id);
   if (department_id) filters.department_id = Number(department_id);
   if (ward_id) filters.ward_id = Number(ward_id);
   if (review_required !== undefined) filters.review_required = review_required === 'true';
@@ -34,9 +42,24 @@ const assign = asyncHandler(async (req, res) => {
     }
   }
 
+  const before = await complaintModel.findById(req.params.id);
+  if (!before) throw new AppError('Complaint not found.', 404);
+
   await complaintModel.update(req.params.id, {
     department_id,
     officer_id: officer_id || null,
+  });
+  await auditService.record({
+    actor: req.user,
+    action: 'COMPLAINT_ASSIGNED',
+    entityType: 'complaint',
+    entityId: req.params.id,
+    previous: { departmentId: before.department_id, officerId: before.officer_id },
+    next: { departmentId: department_id, officerId: officer_id || null },
+  });
+  await timeline.recordEvent(before.id, timeline.EVENT_TYPES.DEPARTMENT_ASSIGNED, `Assigned to ${department.name}${officer_id ? ' (officer assigned)' : ''}`, {
+    details: { departmentId: department_id, officerId: officer_id || null },
+    actorId: req.user.id,
   });
 
   if (officer_id) {

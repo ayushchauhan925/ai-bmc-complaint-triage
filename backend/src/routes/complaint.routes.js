@@ -1,5 +1,7 @@
 const express = require('express');
 const complaintController = require('../controllers/complaint.controller');
+const decisionController = require('../controllers/decision.controller');
+const reviewController = require('../controllers/review.controller');
 const feedbackController = require('../controllers/feedback.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { validateBody } = require('../middleware/validate.middleware');
@@ -13,6 +15,7 @@ const {
   guidedAssistSchema,
 } = require('../validators/complaint.validator');
 const { feedbackSchema } = require('../validators/feedback.validator');
+const { reviewSchema } = require('../validators/review.validator');
 const { ROLES } = require('../utils/constants');
 
 const router = express.Router();
@@ -66,6 +69,17 @@ router.post('/:id/verify-image', roleMiddleware(ROLES.ADMIN), complaintControlle
 router.post('/:id/ai-enrich', roleMiddleware(ROLES.ADMIN), complaintController.aiEnrich);
 router.post('/:id/evidence-analysis', roleMiddleware(ROLES.ADMIN), complaintController.evidenceAnalysis);
 router.post('/:id/duplicates', complaintController.getDuplicates);
+
+// Intelligence read APIs. Timeline/SLA/duplicates are visible to the complaint owner (with
+// internal detail removed for citizens); evidence, decision trace and reviews are staff-only.
+router.get('/:id/timeline', decisionController.getTimeline);
+router.get('/:id/sla', decisionController.getSla);
+router.get('/:id/duplicates', decisionController.getDuplicates);
+router.get('/:id/evidence', roleMiddleware(ROLES.ADMIN, ROLES.OFFICER), decisionController.getEvidence);
+router.get('/:id/decision-trace', roleMiddleware(ROLES.ADMIN, ROLES.OFFICER), decisionController.getDecisionTrace);
+// Human-in-the-loop: approve / correct / false-positive / confirm or reject a duplicate.
+router.post('/:id/review', roleMiddleware(ROLES.ADMIN, ROLES.OFFICER), validateBody(reviewSchema), reviewController.submitReview);
+router.get('/:id/reviews', roleMiddleware(ROLES.ADMIN, ROLES.OFFICER), reviewController.listReviews);
 router.get('/:id/similar', complaintController.getSimilar);
 router.post(
   '/:id/reopen',

@@ -2,6 +2,7 @@ const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
 const notificationService = require('../../services/notification/notification.service');
 const AppError = require('../../utils/AppError');
+const auditService = require('../audit/audit.service');
 const { COMPLAINT_STATUS } = require('../../utils/constants');
 
 const S = COMPLAINT_STATUS;
@@ -70,6 +71,15 @@ async function transition(complaintId, nextStatus, actorUser, notes, { force = f
   } finally {
     conn.release();
   }
+
+  await auditService.record({
+    actor: actorUser,
+    action: 'STATUS_CHANGED',
+    entityType: 'complaint',
+    entityId: complaintId,
+    previous: { status: complaint.status },
+    next: { status: nextStatus, notes },
+  });
 
   const message = STATUS_MESSAGES[nextStatus] || `Complaint status updated to ${nextStatus}.`;
   await notificationService.notify({

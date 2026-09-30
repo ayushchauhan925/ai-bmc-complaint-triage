@@ -203,6 +203,9 @@ const DUPLICATE_DETECTION = {
   maxCandidates: 50,
   // Minimum calibrated duplicate probability (and compatible category) to join an incident.
   linkProbability: 0.6,
+  // Lexical-only evidence (no embedding / photo) says the wording matches, not that it is the
+  // same physical spot - so it must also be very close by to count as the same issue.
+  textOnlyMaxDistanceMeters: 150,
   // Photos whose perceptual-hash similarity is at least this are treated as the same picture.
   imageDuplicateSimilarity: 0.9,
   // A complaint is grouped into an incident once at least this many related complaints are found.

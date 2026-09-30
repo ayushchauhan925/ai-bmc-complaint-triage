@@ -8,6 +8,7 @@ const env = require('./config/env');
 const routes = require('./routes');
 const AppError = require('./utils/AppError');
 const { notFoundHandler, errorHandler } = require('./middleware/error.middleware');
+const { requestLogger } = require('./middleware/requestLogger.middleware');
 
 const app = express();
 
@@ -17,6 +18,7 @@ const app = express();
 // X-Forwarded-For header by default) and req.ip/req.secure would be wrong behind the proxy.
 app.set('trust proxy', 1);
 
+app.use(requestLogger);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // CORS_ORIGIN may be a single URL or a comma-separated list (e.g. a Vercel production
@@ -67,6 +69,22 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+
+// Endpoints that trigger paid OpenAI calls get a much tighter per-client budget than the
+// general API limiter, so a script cannot turn them into a cost/DoS vector.
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many AI requests. Please slow down.' },
+});
+app.use('/api/complaints/ai-assist', aiLimiter);
+app.use('/api/complaints/duplicate-check', aiLimiter);
+app.use('/api/admin/ai-search', aiLimiter);
+app.use('/api/admin/search/semantic', aiLimiter);
+app.use('/api/admin/situation-report', aiLimiter);
+app.use('/api/admin/evaluations', aiLimiter);
 
 // Uploaded images are stored on Cloudinary (see services/upload/cloudinary.service.js),
 // not on local disk, so there is no /uploads static route to serve.

@@ -159,7 +159,81 @@ async function getMapData(filters = {}) {
   return rows;
 }
 
+/** Daily created/resolved counts plus top-category series, with an honest week-over-week change. */
+async function getTrends({ days = 30, category, departmentId } = {}) {
+  const safeDays = Math.min(Math.max(Number(days) || 30, 7), 180);
+  const clauses = [];
+  const params = [];
+  if (category) { clauses.push('category = ?'); params.push(category); }
+  if (departmentId) { clauses.push('department_id = ?'); params.push(Number(departmentId)); }
+  const extra = clauses.length ? `AND ${clauses.join(' AND ')}` : '';
+
+  const [created] = await pool.query(
+    `SELECT DATE(created_at) AS date, COUNT(*) AS count FROM complaints
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ${extra} GROUP BY DATE(created_at) ORDER BY date`,
+    [safeDays, ...params]
+  );
+  const [resolved] = await pool.query(
+    `SELECT DATE(resolved_at) AS date, COUNT(*) AS count FROM complaints
+     WHERE status = 'RESOLVED' AND resolved_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ${extra} GROUP BY DATE(resolved_at) ORDER BY date`,
+    [safeDays, ...params]
+  );
+  const [byCategoryDaily] = await pool.query(
+    `SELECT DATE(created_at) AS date, category, COUNT(*) AS count FROM complaints
+     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ${extra}
+       AND category IN (SELECT category FROM (SELECT category FROM complaints
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY category ORDER BY COUNT(*) DESC LIMIT 5) t)
+     GROUP BY DATE(created_at), category ORDER BY date`,
+    [safeDays, ...params, safeDays]
+  );
+  const [[wow]] = await pool.query(
+    `SELECT COALESCE(SUM(created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0) AS this_week,
+            COALESCE(SUM(created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)), 0) AS last_week
+     FROM complaints WHERE created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) ${extra}`,
+    params
+  );
+  const thisWeek = Number(wow.this_week);
+  const lastWeek = Number(wow.last_week);
+  return {
+    windowDays: safeDays,
+    created,
+    resolved,
+    byCategoryDaily,
+    weekOverWeek: { thisWeek, lastWeek, changePct: lastWeek > 0 ? Number((((thisWeek - lastWeek) / lastWeek) * 100).toFixed(1)) : null },
+  };
+}
+
+async function getConfidenceDistribution() {
+  const [rows] = await pool.query(
+    `SELECT FLOOR(LEAST(ai_confidence, 0.999) * 10) AS bucket, COUNT(*) AS count
+     FROM complaints WHERE ai_confidence IS NOT NULL GROUP BY bucket ORDER BY bucket`
+  );
+  const buckets = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}-${i * 10 + 10}%`, count: 0 }));
+  for (const r of rows) buckets[Number(r.bucket)].count = Number(r.count);
+  const [[meta]] = await pool.query(
+    'SELECT COUNT(*) AS analysed, AVG(ai_confidence) AS avg_conf, SUM(ai_analysis_failed = TRUE) AS failed FROM complaints'
+  );
+  return {
+    buckets,
+    analysed: Number(meta.analysed) - Number(meta.failed || 0),
+    avgConfidence: meta.avg_conf === null ? null : Number(Number(meta.avg_conf).toFixed(3)),
+    aiFailures: Number(meta.failed || 0),
+  };
+}
+
+async function getSlaSummary() {
+  const [rows] = await pool.query(
+    `SELECT sla_status, COUNT(*) AS count FROM complaints WHERE status NOT IN ('RESOLVED', 'REJECTED') GROUP BY sla_status`
+  );
+  const out = { ON_TRACK: 0, APPROACHING: 0, BREACHED: 0 };
+  for (const r of rows) out[r.sla_status] = Number(r.count);
+  return out;
+}
+
 module.exports = {
+  getTrends,
+  getConfidenceDistribution,
+  getSlaSummary,
   getSummaryStats,
   getComplaintsOverTime,
   getByCategory,

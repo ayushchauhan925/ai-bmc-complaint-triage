@@ -168,14 +168,21 @@ function applyImageSimilarity(results, similarityByComplaintId) {
  * must be strong and category-compatible. Different-category neighbours are related but are
  * not treated as the same real-world incident.
  */
+function isLinkable({ method, duplicateProbability: p, categoryMatch, distanceMeters }) {
+  if (categoryMatch === false || p < DUPLICATE_DETECTION.linkProbability) return false;
+  if (method === 'text' && distanceMeters > DUPLICATE_DETECTION.textOnlyMaxDistanceMeters) return false;
+  return true;
+}
+
 function linkableResults(results) {
-  return results.filter((r) => r.categoryMatch !== false && r.duplicateProbability >= DUPLICATE_DETECTION.linkProbability);
+  return results.filter(isLinkable);
 }
 
 module.exports = {
   findRelatedComplaints,
   applyImageSimilarity,
   linkableResults,
+  isLinkable,
   duplicateProbability,
   sameCategoryFamily,
 };

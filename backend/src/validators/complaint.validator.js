@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { CATEGORIES } = require('../utils/constants');
 
 const coordinate = (min, max) =>
   z.preprocess((v) => (typeof v === 'string' ? parseFloat(v) : v), z.number().min(min).max(max));
@@ -11,7 +12,7 @@ const createComplaintSchema = z.object({
 });
 
 const updateComplaintSchema = z.object({
-  category: z.string().trim().max(50).optional(),
+  category: z.enum(CATEGORIES).optional(),
   subcategory: z.string().trim().max(50).optional(),
   department_id: z.preprocess((v) => (v === '' || v === undefined ? undefined : Number(v)), z.number().int().optional()),
   ward_id: z.preprocess((v) => (v === '' || v === undefined ? undefined : Number(v)), z.number().int().optional()),

@@ -25,4 +25,14 @@ async function findByComplaintIds(complaintIds) {
   return rows.map((r) => ({ ...r, embedding: JSON.parse(r.embedding) }));
 }
 
-module.exports = { upsert, findByComplaintId, findByComplaintIds };
+/** Most recent embeddings (bounded scan) for semantic search over recent complaints. */
+async function listRecent(limit = 2000) {
+  const [rows] = await pool.query(
+    `SELECT e.complaint_id, e.embedding FROM complaint_embeddings e
+     JOIN complaints c ON c.id = e.complaint_id ORDER BY c.id DESC LIMIT ?`,
+    [limit]
+  );
+  return rows.map((r) => ({ complaint_id: r.complaint_id, embedding: JSON.parse(r.embedding) }));
+}
+
+module.exports = { upsert, findByComplaintId, findByComplaintIds, listRecent };

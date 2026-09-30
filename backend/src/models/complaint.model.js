@@ -142,8 +142,8 @@ function buildFilterClause(filters) {
     params.push(filters.review_required ? 1 : 0);
   }
   if (filters.search) {
-    clauses.push('(c.description LIKE ? OR c.complaint_number LIKE ?)');
-    params.push(`%${filters.search}%`, `%${filters.search}%`);
+    clauses.push('(c.description LIKE ? OR c.complaint_number LIKE ? OR c.address LIKE ? OR c.ai_title LIKE ?)');
+    params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
   }
   if (filters.sla_status) {
     if (Array.isArray(filters.sla_status)) {
@@ -161,6 +161,14 @@ function buildFilterClause(filters) {
   }
   if (filters.near_hospital) {
     clauses.push(`JSON_EXTRACT(c.severity_signals, '$.near_hospital') = true`);
+  }
+  if (filters.citizen) {
+    clauses.push('c.user_id IN (SELECT id FROM users WHERE name LIKE ? OR email LIKE ?)');
+    params.push(`%${filters.citizen}%`, `%${filters.citizen}%`);
+  }
+  if (filters.complaint_id) {
+    clauses.push('c.id = ?');
+    params.push(filters.complaint_id);
   }
   if (filters.date_from) {
     clauses.push('c.created_at >= ?');

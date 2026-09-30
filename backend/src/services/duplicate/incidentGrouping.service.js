@@ -99,4 +99,53 @@ async function groupComplaintIntoIncident({ complaint, relatedResults, departmen
   return { incidentId, relatedCount: relatedResults.length };
 }
 
-module.exports = { groupComplaintIntoIncident };
+/**
+ * Staff-confirmed duplicate: puts two complaints into the same incident. Reuses an existing
+ * incident of either complaint; merges when both already belong to different incidents;
+ * creates one otherwise. Both citizen reports are preserved - only the grouping changes.
+ */
+async function linkAsSameIncident({ complaint, related, actorId }) {
+  if (complaint.incident_id && related.incident_id && complaint.incident_id !== related.incident_id) {
+    await incidentModel.mergeInto(complaint.incident_id, related.incident_id, actorId);
+    return complaint.incident_id;
+  }
+
+  const conn = await pool.getConnection();
+  let incidentId = complaint.incident_id || related.incident_id;
+  try {
+    await conn.beginTransaction();
+    if (!incidentId) {
+      const created = await incidentModel.create(conn, {
+        title: `${complaint.category.replace(/_/g, ' ')} - ${complaint.address || 'reported location'}`,
+        category: complaint.category,
+        latitude: complaint.latitude,
+        longitude: complaint.longitude,
+        departmentId: complaint.department_id,
+        priorityScore: complaint.priority_score || 0,
+        priorityLevel: complaint.priority_level || 'LOW',
+      });
+      incidentId = created.id;
+    }
+    await incidentModel.linkComplaint(conn, incidentId, complaint.id, actorId);
+    await incidentModel.linkComplaint(conn, incidentId, related.id, actorId);
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+
+  const incident = await incidentModel.findById(incidentId);
+  const recomputed = priorityService.calculatePriority({
+    category: complaint.category,
+    severitySignals: complaint.severity_signals || {},
+    relatedComplaintCount: incident.complaint_count,
+    createdAt: incident.created_at,
+  });
+  const escalated = await calculateEscalatedPriority(incidentId, recomputed.score);
+  await incidentModel.updatePriority(incidentId, escalated.score, escalated.level);
+  return incidentId;
+}
+
+module.exports = { groupComplaintIntoIncident, linkAsSameIncident };

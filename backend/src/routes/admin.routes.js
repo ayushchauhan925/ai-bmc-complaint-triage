@@ -2,10 +2,12 @@ const express = require('express');
 const adminController = require('../controllers/admin.controller');
 const dashboardController = require('../controllers/dashboard.controller');
 const intelligenceController = require('../controllers/intelligence.controller');
+const opsController = require('../controllers/ops.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { validateBody } = require('../middleware/validate.middleware');
 const { assignSchema } = require('../validators/complaint.validator');
 const { aiSearchSchema } = require('../validators/intelligence.validator');
+const { evaluationSchema } = require('../validators/ops.validator');
 const { ROLES } = require('../utils/constants');
 
 const router = express.Router();
@@ -36,5 +38,15 @@ router.get('/situation-reports', intelligenceController.listSituationReports);
 // SLA escalation (Section 14)
 router.post('/sla/check', intelligenceController.runSlaCheck);
 router.get('/sla/escalations', intelligenceController.listSlaEscalations);
+
+// Auditability, AI quality/cost and system health (Section 22, 27-29).
+router.get('/audit-logs', opsController.auditLogs);
+router.get('/ai-usage', opsController.aiUsageSummary);
+router.get('/ai-performance', opsController.aiPerformance);
+router.post('/evaluations/run', validateBody(evaluationSchema), opsController.runEvaluation);
+router.get('/evaluations/:runId', opsController.evaluationRun);
+router.get('/observability', opsController.observability);
+router.post('/jobs/:name/run', opsController.runJob);
+router.get('/search/semantic', opsController.semantic);
 
 module.exports = router;
