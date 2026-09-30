@@ -6,6 +6,11 @@
   html {
     -webkit-font-smoothing: antialiased;
   }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
   body {
     @apply bg-slate-50 text-slate-900;
   }
