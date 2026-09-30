@@ -13,16 +13,70 @@ const linkClass = (isActive: boolean, padding: string) =>
     isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'
   }`;
 
-/** Desktop sidebar: pinned under the header and independently scrollable. */
+const STORAGE_KEY = 'sidebar-collapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const Chevron = ({ flip }: { flip: boolean }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={flip ? 'rotate-180' : ''}>
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+
+/**
+ * Desktop sidebar: pinned under the header, independently scrollable, and collapsible to an
+ * icon rail (the choice is remembered). Labels stay available to screen readers and as
+ * tooltips when collapsed.
+ */
 export function Sidebar({ links, title }: { links: SidebarLink[]; title: string }) {
+  const [collapsed, setCollapsed] = React.useState(readCollapsed);
+
+  const toggle = () =>
+    setCollapsed((c) => {
+      const next = !c;
+      try {
+        localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        /* storage unavailable - keep in memory only */
+      }
+      return next;
+    });
+
   return (
-    <aside className="sticky top-14 hidden h-[calc(100vh-56px)] w-60 shrink-0 self-start overflow-y-auto overscroll-contain border-r border-slate-200 bg-white pb-6 md:block">
-      <div className="px-4 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</div>
+    <aside
+      aria-label={`${title} navigation`}
+      className={`sticky top-14 hidden h-[calc(100vh-56px)] shrink-0 self-start overflow-y-auto overflow-x-hidden overscroll-contain border-r border-slate-200 bg-white pb-6 transition-[width] duration-200 md:block ${collapsed ? 'w-16' : 'w-60'}`}
+    >
+      <div className={`flex items-center py-3 ${collapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
+        {!collapsed && <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        >
+          <Chevron flip={collapsed} />
+        </button>
+      </div>
       <nav aria-label="Primary" className="flex flex-col gap-0.5 px-2">
         {links.map((link) => (
-          <NavLink key={link.to} to={link.to} end={link.end} className={({ isActive }) => linkClass(isActive, 'py-2')}>
-            {link.icon}
-            {link.label}
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.end}
+            title={collapsed ? link.label : undefined}
+            className={({ isActive }) => `${linkClass(isActive, 'py-2')} ${collapsed ? 'justify-center px-0' : ''}`}
+          >
+            <span className="shrink-0">{link.icon}</span>
+            <span className={collapsed ? 'sr-only' : 'truncate'}>{link.label}</span>
           </NavLink>
         ))}
       </nav>
