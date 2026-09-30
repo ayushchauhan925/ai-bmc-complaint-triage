@@ -138,7 +138,7 @@ Timeline events · audit log · notifications  →  Staff review / SLA / escalat
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Frontend | React 18, Vite, TypeScript, React Router 6, Tailwind CSS | Existing design system (`card`, `btn`, `badge`, `input` classes) extended, not replaced |
+| Frontend | React 18, Vite, TypeScript, React Router 6, Tailwind CSS, jsPDF (PDF export) | Existing design system (`card`, `btn`, `badge`, `input` classes) extended, not replaced |
 | Server state | **TanStack Query** | Caching, polling, retries and loading/error states for the many dashboards |
 | Charts / maps | Recharts; React-Leaflet + `leaflet.markercluster` + `leaflet.heat` | OpenStreetMap tiles (no Google Maps) |
 | Backend | Node ≥ 18, Express 4, Zod, JWT, bcryptjs, Helmet, express-rate-limit, multer | Controller → Service → Model |
@@ -413,6 +413,23 @@ Kept the existing stack and design system (Tailwind, Recharts, React-Leaflet, cu
 | Staff & Admin | `/complaints/:id` | Complaint page: SLA panel, **AI assessment** (category, priority, confidence, evidence strength, review reasons), **decision factors** with source tags, evidence signal breakdown, **related complaints** with link / "not related" actions, **staff review panel**, unified **timeline** with icons |
 | Citizen | `/complaints/:id` | Same page with a **public-safe timeline**, SLA countdown and related-complaint notice; no internal insights |
 | All | — | Existing citizen submit/track/feedback/reopen, officer queue + copilot, Intelligence Center, Analytics, public transparency dashboard |
+
+### PDF reports
+
+Generated **in the browser** ( + , loaded only when a button is clicked, so they add nothing to the initial bundle) from data the signed-in user can already see - no extra server load and no new permissions. Every report has the Civic Connect header, page numbers, a generation timestamp and a data-scope footer.
+
+| Where | Button | Contents |
+|---|---|---|
+| Complaint page (citizen) | **Download receipt** | ID, status, category, location, target date, description, public timeline |
+| Complaint page (staff) | **Export PDF** | Above plus AI assessment, evidence score, decision factors, internal timeline |
+| Incident page | **Export PDF** | Overview, severity, trend, affected area, SLA state, linked complaints |
+| Command Center | **Export PDF** | Headline metrics, SLA state, anomalies, hotspots, department workload |
+| SLA & escalations | **Export PDF** | Summary, targets, at-risk complaints |
+| Admin complaints list | **Export page (PDF)** | The current filtered page as a table |
+| Audit log | **Export page (PDF)** | The current filtered page with before/after values |
+| Public dashboard | **Download summary (PDF)** | Anonymous aggregates only |
+
+Charts are not embedded - reports contain the underlying figures as tables. **Limitation:** the standard PDF fonts cover Latin text only, so Hindi/Marathi text is replaced by  (the English AI summary is included alongside) rather than printed garbled.
 
 Cross-cutting UX: skeleton loading on every data page, explicit error panel with **Try again**, empty states, **"Insufficient data"** panels wherever the backend declines to produce a number, text labels alongside colour for priority/status/SLA, keyboard-operable tabs/tables with `aria-*` roles, `role="img"` chart labels, mobile scrollable nav (all links reachable), table→card layouts on small screens.
 
@@ -841,6 +858,7 @@ it's baked in at build time, not read live.
 - **Seed/demo data, wards and SLA values are synthetic** application rules, not official BMC data or policy.
 - **The UI was not exercised in a real browser session in this build.** Verified instead: strict TypeScript (`tsc --noEmit` clean), a clean production build, 140 backend tests, live HTTP-level checks of the new endpoints, and a from-scratch server boot with migrations. Click through the main flows before a live demo (particularly the map layers and the new admin pages).
 - **Frontend scope.** Delivered: the command center, GIS command center, hotspot/anomaly/forecast/workload views, SLA & escalation center, AI performance/cost/health, audit log, review queue, complaint intelligence panels & timeline, incident intelligence, and richer complaint search. **Not built:** a redesigned citizen home page, a field-worker mobile view, TanStack Table (existing tables are simple and server-paginated), a command-palette global search, dedicated resource-intelligence / recurring-problem / resolution-effectiveness / infrastructure-health pages (their inputs exist — demand forecast table, `REPEATED_COMPLAINTS` escalations, hotspots — but there is no dedicated UI or backend model for intervention tracking), and an extended public dashboard. Real-time uses polling (30–120 s), not WebSockets.
+- **PDF export uses built-in Latin fonts**: Devanagari complaint text appears as a placeholder in PDFs (the English AI summary is included). Embedding a Devanagari font would fix this at the cost of a larger download.
 - **Metrics are per-instance and in-memory** (reset on restart); durable history is in MySQL.
 - **Costs are estimates** from a static list-price table and reported token counts — not billing data.
 - **Forecasting is statistical extrapolation** (Holt linear) without seasonality; with only weeks of data it is a coarse aid. The backtest is shown so you can judge it.

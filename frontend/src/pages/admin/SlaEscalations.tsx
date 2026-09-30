@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as platform from '../../services/platform.service';
 import { getErrorMessage } from '../../services/api';
 import { PageHeader, QueryBoundary, Tabs, PageSkeleton, CardSkeleton, InsufficientData, fmtDate, fmtRemaining, pct } from '../../components/ui/kit';
+import { PdfButton } from '../../components/ui/PdfButton';
+import { slaReport } from '../../utils/pdf';
 import { PriorityBadge, SlaBadge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { PRIORITY_LEVELS, formatCategory } from '../../utils/constants';
@@ -35,6 +37,7 @@ function SlaTab() {
             <div className="card overflow-x-auto p-0">
               <div className="flex items-center justify-between px-4 py-3">
                 <h2 className="text-sm font-semibold text-slate-800">Needs attention ({rows.length})</h2>
+                <PdfButton label="Export PDF" build={() => slaReport(s)} />
                 <label className="text-xs text-slate-500">Sort <select className="input ml-1 inline-block w-auto !py-1" value={sort} onChange={(e) => setSort(e.target.value as 'deadline' | 'priority')}><option value="deadline">Time remaining</option><option value="priority">Priority</option></select></label>
               </div>
               {rows.length === 0 ? <div className="p-6"><EmptyState title="Nothing at risk" description="No open complaint is approaching or past its SLA." /></div> : (

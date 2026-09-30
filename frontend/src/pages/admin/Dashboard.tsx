@@ -7,6 +7,8 @@ import * as adminService from '../../services/admin.service';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { PriorityBadge, StatusBadge, SlaBadge } from '../../components/common/Badge';
 import { ClipboardIcon, AlertIcon, ClockIcon, CheckCircleIcon, LayersIcon, FlameIcon, ActivityIcon, ShieldIcon, RefreshIcon } from '../../components/common/Icons';
+import { PdfButton } from '../../components/ui/PdfButton';
+import { commandCenterReport } from '../../utils/pdf';
 import { PageHeader, QueryBoundary, PageSkeleton, InsufficientData, fmtDate, pct } from '../../components/ui/kit';
 import { CHART_BRAND, CHART_GRID, CHART_AXIS_TEXT } from '../../utils/chartColors';
 import { formatCategory } from '../../utils/constants';
@@ -27,9 +29,12 @@ export default function CommandCenter() {
         title="Command Center"
         description="Live civic situation: what needs attention, where, and how the response is performing."
         actions={
+          <>
+          <PdfButton label="Export PDF" disabled={!overview.data} build={async () => { if (overview.data) await commandCenterReport(overview.data); }} />
           <button className="btn-secondary !py-1.5 text-xs" onClick={() => { overview.refetch(); stats.refetch(); }} disabled={overview.isFetching}>
             <RefreshIcon size={14} className={overview.isFetching ? 'animate-spin' : ''} /> Refresh
           </button>
+          </>
         }
       />
 

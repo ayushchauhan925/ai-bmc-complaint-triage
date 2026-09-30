@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as platform from '../../services/platform.service';
+import { PdfButton } from '../../components/ui/PdfButton';
+import { auditReport } from '../../utils/pdf';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtDate } from '../../components/ui/kit';
 import { EmptyState } from '../../components/common/EmptyState';
 
@@ -25,7 +27,11 @@ export default function AuditLog() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <PageHeader title="Audit log" description="Who did what, when, and what changed. Secrets are never stored; values shown are sanitised." />
+      <PageHeader
+        title="Audit log"
+        description="Who did what, when, and what changed. Secrets are never stored; values shown are sanitised."
+        actions={<PdfButton label="Export page (PDF)" disabled={!q.data?.rows.length} build={() => auditReport(`${q.data!.total} matching entries; showing page ${page}. Filters: ${Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, q.data!.rows)} />}
+      />
       <div className="mt-4 flex flex-wrap gap-2">
         <select aria-label="Entity type" className="input w-auto" value={filters.entity_type} onChange={(e) => set('entity_type', e.target.value)}>
           <option value="">All entities</option>{ENTITY_TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}

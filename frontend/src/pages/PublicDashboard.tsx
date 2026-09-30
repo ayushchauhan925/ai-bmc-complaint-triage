@@ -5,6 +5,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 import { getPublicStatistics } from '../services/public.service';
 import type { PublicStatistics } from '../services/public.service';
 import { Footer } from '../components/layout/Footer';
+import { PdfButton } from '../components/ui/PdfButton';
+import { publicSummaryReport } from '../utils/pdf';
 import { ErrorPanel, PageSkeleton, InsufficientData, Meter, fmtDate } from '../components/ui/kit';
 import { EmptyState } from '../components/common/EmptyState';
 import { CHART_BRAND, CHART_GRID, CHART_AXIS_TEXT, STATUS_CHART_COLORS } from '../utils/chartColors';
@@ -182,7 +184,10 @@ export default function PublicDashboard() {
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-brand-100 ring-1 ring-white/20"><ShieldIcon size={13} /> Public transparency dashboard</span>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Civic complaints, in the open</h1>
           <p className="mt-3 max-w-2xl text-brand-100">How many issues are reported, how quickly they get resolved, and how each department is performing. Anonymous, aggregated and updated live.</p>
-          {q.data?.generated_at && <p className="mt-4 text-xs text-brand-300">Updated {fmtDate(q.data.generated_at)}</p>}
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            {q.data?.generated_at && <p className="text-xs text-brand-300">Updated {fmtDate(q.data.generated_at)}</p>}
+            {q.data && <PdfButton label="Download summary (PDF)" build={() => publicSummaryReport(q.data!)} className="!border-white/30 !bg-white/10 !text-white hover:!bg-white/20" />}
+          </div>
         </div>
       </section>
 

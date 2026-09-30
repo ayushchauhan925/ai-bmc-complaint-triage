@@ -5,6 +5,8 @@ import * as adminService from '../../services/admin.service';
 import * as platform from '../../services/platform.service';
 import { PriorityBadge, StatusBadge, CategoryBadge, SlaBadge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
+import { PdfButton } from '../../components/ui/PdfButton';
+import { complaintListReport } from '../../utils/pdf';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtRemaining } from '../../components/ui/kit';
 import { CATEGORIES, COMPLAINT_STATUSES, PRIORITY_LEVELS, SLA_STATUSES, formatStatus, formatCategory } from '../../utils/constants';
 import type { Complaint } from '../../utils/types';
@@ -78,7 +80,11 @@ export default function AdminComplaints() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <PageHeader title="Complaints" description="Search by text, ID, location, citizen, incident, department, status, SLA or date." />
+      <PageHeader
+        title="Complaints"
+        description="Search by text, ID, location, citizen, incident, department, status, SLA or date."
+        actions={!semantic && <PdfButton label="Export page (PDF)" disabled={!list.data?.rows.length} build={() => complaintListReport('Complaints', `${list.data!.total} matching complaint(s); showing page ${page}. Filters: ${Object.entries(debounced).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}.`, list.data!.rows)} />}
+      />
 
       <div className="mt-4 space-y-2">
         <div className="flex flex-wrap items-center gap-2">

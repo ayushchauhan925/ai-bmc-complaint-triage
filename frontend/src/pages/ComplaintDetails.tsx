@@ -3,6 +3,8 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getComplaint } from '../services/complaint.service';
 import * as platform from '../services/platform.service';
+import { PdfButton } from '../components/ui/PdfButton';
+import { complaintReport } from '../utils/pdf';
 import { PageLoader } from '../components/common/Spinner';
 import { ErrorState } from '../components/common/EmptyState';
 import { PriorityBadge, StatusBadge, CategoryBadge, SlaBadge } from '../components/common/Badge';
@@ -78,7 +80,18 @@ export default function ComplaintDetails() {
             {complaint.ai_title || formatCategory(complaint.category)}
           </h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PdfButton
+            label={isStaff ? 'Export PDF' : 'Download receipt'}
+            build={async () => {
+              const [tl, sla, trace] = await Promise.all([
+                platform.timeline(complaint.id),
+                platform.complaintSla(complaint.id).catch(() => null),
+                isStaff ? platform.decisionTrace(complaint.id).catch(() => null) : Promise.resolve(null),
+              ]);
+              await complaintReport({ complaint, timeline: tl, sla, trace, staff: isStaff });
+            }}
+          />
           <PriorityBadge level={complaint.priority_level} />
           <StatusBadge status={complaint.status} />
           <SlaBadge status={complaint.sla_status} />

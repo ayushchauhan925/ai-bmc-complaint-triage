@@ -7,6 +7,8 @@ import type { IncidentEvent } from '../../services/incident.service';
 import { PriorityBadge } from '../../components/common/Badge';
 import { PageLoader } from '../../components/common/Spinner';
 import { ErrorState } from '../../components/common/EmptyState';
+import { PdfButton } from '../../components/ui/PdfButton';
+import { incidentReport } from '../../utils/pdf';
 import { IncidentIntel } from '../../components/complaint/IncidentIntel';
 import type { IncidentIntelligence } from '../../services/platform.service';
 import { ComplaintCard } from '../../components/complaint/ComplaintCard';
@@ -99,7 +101,10 @@ export default function AdminIncidentDetails() {
           <p className="font-mono text-xs text-slate-400">{incident.incident_number}</p>
           <h1 className="mt-1 text-xl font-semibold text-slate-900">{incident.title}</h1>
         </div>
-        <PriorityBadge level={incident.priority_level} />
+        <div className="flex items-center gap-2">
+          <PdfButton label="Export PDF" build={() => incidentReport({ incident, complaints, intelligence: intel })} />
+          <PriorityBadge level={incident.priority_level} />
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
