@@ -22,7 +22,7 @@ function useDebounced<T>(value: T, ms = 350) {
 function Row({ c }: { c: Complaint }) {
   const remaining = c.sla_deadline && !['RESOLVED', 'REJECTED'].includes(c.status) ? new Date(c.sla_deadline).getTime() - Date.now() : null;
   return (
-    <tr className="border-b border-slate-50 hover:bg-slate-50">
+    <tr className={`row-${c.priority_level}`}>
       <td className="px-4 py-3">
         <Link to={`/complaints/${c.id}`} className="font-mono text-xs text-brand-600 hover:underline">{c.complaint_number}</Link>
         {c.review_required && <span className="ml-2 rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-medium text-pink-800">Review</span>}
@@ -140,7 +140,7 @@ export default function AdminComplaints() {
                     {res.rows.length === 0 ? <div className="p-6"><EmptyState title="No complaints match your filters" action={active ? <button className="btn-secondary text-xs" onClick={clear}>Clear filters</button> : undefined} /></div> : (
                       <>
                         <div className="hidden overflow-x-auto md:block">
-                          <table className="w-full text-left text-sm">
+                          <table className="data-table">
                             <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400"><tr>{['ID', 'Category', 'Priority', 'Status', 'Incident', 'SLA', 'Department', 'Date'].map((h) => <th key={h} scope="col" className="px-4 py-3">{h}</th>)}</tr></thead>
                             <tbody>{res.rows.map((c) => <Row key={c.id} c={c} />)}</tbody>
                           </table>

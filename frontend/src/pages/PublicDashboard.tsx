@@ -124,7 +124,7 @@ function Dashboard({ d }: { d: PublicStatistics }) {
       <Card title="Department performance" subtitle={`How each department is doing. Departments with fewer than ${d.min_group_size ?? 3} complaints are not shown.`}>
         {departments.length === 0 ? <InsufficientData reason="Not enough complaints per department yet." /> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="data-table">
               <caption className="sr-only">Complaints handled and resolved by department</caption>
               <thead className="text-xs text-slate-500"><tr><th scope="col" className="py-2 pr-4 font-medium">Department</th><th scope="col" className="py-2 pr-4 font-medium">Complaints</th><th scope="col" className="w-1/3 py-2 pr-4 font-medium">Resolved</th><th scope="col" className="py-2 font-medium">Avg. time</th></tr></thead>
               <tbody>

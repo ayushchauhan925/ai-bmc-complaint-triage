@@ -186,7 +186,7 @@ export function InsightsPanel({ complaintId }: { complaintId: number }) {
                   {(ev) => ev.available && ev.signals ? (
                     <details className="mt-3 text-xs">
                       <summary className="cursor-pointer text-slate-500 hover:text-slate-700">Signal breakdown</summary>
-                      <table className="mt-2 w-full">
+                      <table className="data-table data-table-compact mt-2">
                         <tbody>
                           {ev.signals.filter((s) => s.applicable).map((s) => (
                             <tr key={s.key} className="border-t border-slate-100">

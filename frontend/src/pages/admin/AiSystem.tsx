@@ -49,7 +49,7 @@ function Quality() {
             </div>
             {run.isError && <p role="alert" className="mt-2 text-xs text-red-600">{getErrorMessage(run.error)}</p>}
             {last && (
-              <table className="mt-3 w-full text-left text-sm">
+              <table className="data-table data-table-compact mt-3">
                 <thead className="text-xs text-slate-500"><tr><th className="py-1 font-medium">Task</th><th className="py-1 font-medium">Agreement</th><th className="py-1 font-medium w-1/3">Score</th></tr></thead>
                 <tbody>{last.summary.map((s) => (
                   <tr key={s.task} className="border-t border-slate-100"><td className="py-1.5 capitalize">{s.task}</td>
@@ -92,7 +92,7 @@ function Cost() {
               <Metric label="Estimated cost" value={`$${u.totals.estimatedCostUsd.toFixed(4)}`} hint="estimate, not billing" />
             </div>
             <div className="card overflow-x-auto p-0">
-              <table className="w-full text-left text-sm"><caption className="sr-only">AI usage by use case</caption>
+              <table className="data-table"><caption className="sr-only">AI usage by use case</caption>
                 <thead className="bg-slate-50 text-xs text-slate-500"><tr>{['Use case', 'Requests', 'Failures', 'Tokens', 'Est. cost', 'Avg latency'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
                 <tbody>{u.byUseCase.map((r, i) => (
                   <tr key={r.useCase} className="border-t border-slate-100"><td className="px-3 py-2 font-medium">{r.useCase.replace(/_/g, ' ')}{i === 0 && u.byUseCase.length > 1 && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">most expensive</span>}</td><td className="px-3 py-2">{r.requests}</td><td className="px-3 py-2">{r.failures} ({pct(r.failureRate)})</td><td className="px-3 py-2">{r.totalTokens.toLocaleString()}</td><td className="px-3 py-2">${r.estimatedCostUsd.toFixed(4)}</td><td className="px-3 py-2">{r.avgLatencyMs} ms</td></tr>))}</tbody>
@@ -130,7 +130,7 @@ function System() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="card overflow-x-auto p-0"><h3 className="px-4 pt-4 text-sm font-semibold text-slate-800">Slowest endpoints (p95)</h3>
                 {routes.length === 0 ? <p className="p-4 text-sm text-slate-400">No traffic recorded yet.</p> : (
-                  <table className="mt-2 w-full text-left text-xs"><thead className="text-slate-500"><tr><th className="px-4 py-1 font-medium">Route</th><th className="px-2 py-1 font-medium">Calls</th><th className="px-2 py-1 font-medium">p50</th><th className="px-2 py-1 font-medium">p95</th></tr></thead>
+                  <table className="data-table data-table-compact mt-2"><thead className="text-slate-500"><tr><th className="px-4 py-1 font-medium">Route</th><th className="px-2 py-1 font-medium">Calls</th><th className="px-2 py-1 font-medium">p50</th><th className="px-2 py-1 font-medium">p95</th></tr></thead>
                     <tbody>{routes.map(([k, v]) => <tr key={k} className="border-t border-slate-100"><td className="max-w-[16rem] truncate px-4 py-1.5 font-mono" title={k}>{k.replace('http ', '')}</td><td className="px-2 py-1.5">{v.count}</td><td className="px-2 py-1.5">{v.p50Ms} ms</td><td className="px-2 py-1.5">{v.p95Ms} ms</td></tr>)}</tbody></table>
                 )}
               </div>

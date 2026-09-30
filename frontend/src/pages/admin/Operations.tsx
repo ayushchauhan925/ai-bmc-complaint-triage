@@ -108,7 +108,7 @@ function ForecastCenter() {
               <h3 className="text-sm font-semibold text-slate-800">Expected demand — next {f.horizonDays} days</h3>
               {demand.length === 0 ? <div className="mt-3"><InsufficientData reason="No category has enough history to forecast." /></div> : (
                 <div className="mt-3 overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="data-table data-table-compact">
                     <thead className="text-xs text-slate-500"><tr><th className="py-1.5 pr-3 font-medium">Category</th><th className="py-1.5 pr-3 font-medium">Expected</th><th className="py-1.5 pr-3 font-medium">Previous {f.horizonDays} days</th><th className="py-1.5 font-medium">Change</th></tr></thead>
                     <tbody>{demand.map((d) => (
                       <tr key={d.category} className="border-t border-slate-100">
@@ -142,7 +142,7 @@ function WorkloadCenter() {
       {({ departments, trend }) => (
         <div className="space-y-4">
           <div className="card overflow-x-auto p-0">
-            <table className="w-full text-left text-sm">
+            <table className="data-table">
               <caption className="sr-only">Department workload</caption>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>{['Department', 'Pending', 'Overdue', 'High priority', 'Resolved', 'Avg resolution', 'SLA compliance', 'Incoming 7d'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>

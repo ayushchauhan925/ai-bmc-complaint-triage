@@ -88,7 +88,7 @@ export default function OfficerDashboard() {
                 <>
                   {/* Desktop table */}
                   <div className="card hidden overflow-x-auto p-0 md:block">
-                    <table className="w-full text-left text-sm">
+                    <table className="data-table">
                       <caption className="sr-only">Department work queue</caption>
                       <thead className="border-b border-slate-100 bg-slate-50 text-xs text-slate-500">
                         <tr>{['Complaint', 'Category', 'Priority', 'Status', 'SLA', 'Time', 'Reported'].map((h) => <th key={h} scope="col" className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
@@ -97,7 +97,7 @@ export default function OfficerDashboard() {
                         {visible.map((c) => {
                           const rem = remainingMs(c);
                           return (
-                            <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50">
+                            <tr key={c.id} className={`row-${c.priority_level}`}>
                               <td className="max-w-xs px-4 py-3">
                                 <Link to={`/complaints/${c.id}`} className="font-mono text-xs font-medium text-brand-600 hover:underline">{c.complaint_number}</Link>
                                 <p className="mt-0.5 truncate text-xs text-slate-500">{c.ai_title || c.description}</p>

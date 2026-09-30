@@ -59,3 +59,62 @@
 @media (prefers-reduced-motion: reduce) {
   .egg-drops { display: none; }
 }
+
+/* ------------------------------------------------------------------ Data tables
+   One table design for the whole app. Declared after Tailwind's utilities with a
+   (class + element) selector so it deliberately wins over per-cell padding utilities. */
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.8125rem;
+  color: #334155;
+}
+.data-table caption { text-align: left; }
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.data-table tbody td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 120ms ease;
+}
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover td { background: #f8fafc; }
+.data-table tbody tr:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
+.data-table tbody tr[aria-selected='true'] td { background: #eff6ff; }
+.data-table th:first-child, .data-table td:first-child { padding-left: 1.25rem; }
+.data-table th:last-child, .data-table td:last-child { padding-right: 1.25rem; }
+.data-table a { font-weight: 500; }
+
+/* Compact variant for small tables inside cards/panels. */
+.data-table-compact thead th { padding: 0.4rem 0.75rem; }
+.data-table-compact tbody td { padding: 0.45rem 0.75rem; }
+.data-table-compact th:first-child, .data-table-compact td:first-child { padding-left: 0.5rem; }
+.data-table-compact th:last-child, .data-table-compact td:last-child { padding-right: 0.5rem; }
+
+/* Priority accent: a coloured stripe on the first cell, plus a text label elsewhere in the row. */
+.data-table tr.row-CRITICAL > td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+.data-table tr.row-HIGH > td:first-child { box-shadow: inset 3px 0 0 #ea580c; }
+.data-table tr.row-MEDIUM > td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+.data-table tr.row-LOW > td:first-child { box-shadow: inset 3px 0 0 #cbd5e1; }
+
+/* Numeric columns. */
+.data-table .num { text-align: right; }
+
+/* Scroll container with edge shadow hint so wide tables read as scrollable. */
+.table-wrap { overflow-x: auto; border-radius: 0.75rem; }

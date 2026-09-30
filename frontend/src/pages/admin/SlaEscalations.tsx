@@ -41,10 +41,10 @@ function SlaTab() {
                 <label className="text-xs text-slate-500">Sort <select className="input ml-1 inline-block w-auto !py-1" value={sort} onChange={(e) => setSort(e.target.value as 'deadline' | 'priority')}><option value="deadline">Time remaining</option><option value="priority">Priority</option></select></label>
               </div>
               {rows.length === 0 ? <div className="p-6"><EmptyState title="Nothing at risk" description="No open complaint is approaching or past its SLA." /></div> : (
-                <table className="w-full text-left text-sm">
+                <table className="data-table">
                   <thead className="bg-slate-50 text-xs text-slate-500"><tr>{['Complaint', 'Priority', 'Department', 'Deadline', 'Time', 'SLA'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
                   <tbody>{rows.map((c) => (
-                    <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <tr key={c.id} className={`row-${c.priority_level}`}>
                       <td className="px-3 py-2"><Link to={`/complaints/${c.id}`} className="font-mono text-xs font-medium text-brand-600 hover:underline">{c.complaint_number}</Link><span className="block text-xs text-slate-500">{formatCategory(c.category)}</span></td>
                       <td className="px-3 py-2"><PriorityBadge level={c.priority_level} /></td>
                       <td className="px-3 py-2 text-slate-600">{c.department_name || 'Unassigned'}</td>
@@ -125,7 +125,7 @@ function PoliciesTab() {
         <div className="card p-4">
           <h2 className="text-sm font-semibold text-slate-800">SLA targets by priority</h2>
           <p className="mt-0.5 text-xs text-slate-500">Application targets used for deadlines and warnings — configurable, and every change is written to the audit log.</p>
-          <table className="mt-3 w-full text-left text-sm">
+          <table className="data-table data-table-compact mt-3">
             <thead className="text-xs text-slate-500"><tr><th className="py-1.5 font-medium">Priority</th><th className="py-1.5 font-medium">Target (hours)</th><th className="py-1.5 font-medium">Warn at</th><th /></tr></thead>
             <tbody>
               {PRIORITY_LEVELS.map((p) => {
