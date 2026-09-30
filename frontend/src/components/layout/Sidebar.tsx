@@ -35,14 +35,14 @@ export function Sidebar({ links, title }: { links: SidebarLink[]; title: string 
 
 export function MobileNav({ links }: { links: SidebarLink[] }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-slate-200 bg-white py-1.5 md:hidden">
-      {links.slice(0, 5).map((link) => (
+    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 z-30 flex overflow-x-auto border-t border-slate-200 bg-white py-1.5 md:hidden">
+      {links.map((link) => (
         <NavLink
           key={link.to}
           to={link.to}
           end={link.end}
           className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
+            `flex min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 px-2 py-1 text-center text-[11px] font-medium ${
               isActive ? 'text-brand-700' : 'text-slate-500'
             }`
           }

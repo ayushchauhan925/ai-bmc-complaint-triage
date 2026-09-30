@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getComplaint, getDuplicates } from '../services/complaint.service';
+import { getComplaint } from '../services/complaint.service';
+import * as platform from '../services/platform.service';
 import { PageLoader } from '../components/common/Spinner';
 import { ErrorState } from '../components/common/EmptyState';
 import { PriorityBadge, StatusBadge, CategoryBadge, SlaBadge } from '../components/common/Badge';
@@ -16,6 +17,7 @@ import { EvidenceIntelligence } from '../components/complaint/EvidenceIntelligen
 import { ResolutionVerificationCard } from '../components/complaint/ResolutionVerificationCard';
 import { ReopenDialog } from '../components/complaint/ReopenDialog';
 import { OfficerCopilotPanel } from '../components/complaint/OfficerCopilotPanel';
+import { SlaPanel, ComplaintTimeline, InsightsPanel, RelatedComplaints, ReviewPanel } from '../components/complaint/Intelligence';
 import { getErrorMessage } from '../services/api';
 import { formatCategory } from '../utils/constants';
 import type { Complaint } from '../utils/types';
@@ -38,8 +40,8 @@ export default function ComplaintDetails() {
       const data = await getComplaint(id);
       setComplaint(data);
       if (data.status !== 'SUBMITTED') {
-        getDuplicates(id)
-          .then((d) => setDuplicateCount(d.length))
+        platform.duplicates(id)
+          .then((d) => setDuplicateCount(d.duplicates.filter((x) => x.reviewStatus !== 'REJECTED').length))
           .catch(() => {});
       }
     } catch (err) {
@@ -59,6 +61,7 @@ export default function ComplaintDetails() {
   if (error || !complaint) return <div className="p-6"><ErrorState message={error || 'Not found'} /></div>;
 
   const hasFeedback = complaint.status === 'RESOLVED';
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'OFFICER';
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -99,7 +102,16 @@ export default function ComplaintDetails() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-6"><SlaPanel complaintId={complaint.id} /></div>
+
+      {isStaff && (
+        <div className="mt-4 space-y-4">
+          <InsightsPanel complaintId={complaint.id} />
+          <RelatedComplaints complaintId={complaint.id} canAct onChanged={load} />
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <PriorityReasons level={complaint.priority_level} score={complaint.priority_score} reasons={complaint.priority_reasons} />
 
         <div className="card p-4">
@@ -176,6 +188,12 @@ export default function ComplaintDetails() {
         </div>
       )}
 
+      {isStaff && (
+        <div className="mt-4">
+          <ReviewPanel complaint={complaint} isAdmin={user?.role === 'ADMIN'} onUpdated={load} />
+        </div>
+      )}
+
       {user?.role === 'ADMIN' && (
         <div className="mt-4">
           <AdminActions complaint={complaint} onUpdated={setComplaint} />
@@ -193,9 +211,8 @@ export default function ComplaintDetails() {
         </div>
       )}
 
-      <div className="card mt-4 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">Timeline</h3>
-        <StatusTimeline history={complaint.history || []} />
+      <div className="mt-4">
+        <ComplaintTimeline complaintId={complaint.id} staff={isStaff} />
       </div>
     </div>
   );

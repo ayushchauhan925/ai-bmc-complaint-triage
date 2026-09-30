@@ -210,3 +210,7 @@ longitude)`; `complaint_images.complaint_id`; `complaint_status_history.complain
   bracket), forced SLA breaches, resolved complaints with feedback. Uses the real
   priority/routing/SLA services for internal consistency but does not call OpenAI
   repeatedly (see the README's Limitations section).
+
+---
+
+> **Update:** migration `003_civic_platform.sql` adds `audit_logs`, `complaint_events`, `complaint_decisions`, `complaint_duplicates`, `human_reviews`, `sla_policies`, `escalation_events`, `ai_usage`, `ai_evaluations`, `job_runs` and extra columns/indexes. See [README > Database & migrations](../README.md#database--migrations).

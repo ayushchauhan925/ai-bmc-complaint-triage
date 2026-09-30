@@ -171,3 +171,7 @@ what this says.
 
 Every one of these paths has a corresponding test — see `tests/unit/aiResponseParser.test.js`
 and `tests/unit/adminSearch.service.test.js`.
+
+---
+
+> **Update:** the AI pipeline now includes evidence scoring, a hybrid decision engine, prompt-injection guards and fallback/retry behaviour. See [README > The complaint pipeline](../README.md#the-complaint-pipeline-step-by-step) and [Intelligence capabilities](../README.md#intelligence-capabilities-in-depth).

@@ -1,345 +1,555 @@
-# Civic Connect — AI BMC Complaint Triage
+# Civic Connect — Civic AI Intelligence & Response Platform
 
-An AI-assisted civic complaint management platform: citizens report issues (potholes,
-garbage, water leakage, streetlights, etc.) in English, Hindi, Hinglish or Marathi with a
-photo and location; OpenAI classifies, summarizes and assesses evidence quality, then
-**deterministic backend rules** — never the AI — decide priority, department routing, SLA,
-duplicate/incident grouping, and incident escalation. Officers work assigned complaints to
-resolution with an AI work-assistant checklist; citizens track status, get duplicate
-warnings before submitting, and can reopen resolved complaints; admins get a full
-dashboard, live map with hotspot detection, a natural-language search over complaints, an
-AI-generated daily situation report, and a public transparency dashboard.
+An AI-assisted municipal (BMC-style) complaint management platform that goes well beyond
+"CRUD + an LLM". Citizens report civic issues in English, Hindi, Hinglish or Marathi, with
+photos and a map location. The system **understands** the report with a validated,
+structured AI analysis, **scores the evidence**, **finds duplicates and clusters them into
+incidents**, **decides** priority / routing / SLA with an explainable rule engine,
+**escalates** what needs attention, puts a **human in the loop** for uncertain decisions,
+and gives operators a **command center** with GIS, hotspots, anomaly detection,
+forecasting, department workload, an audit trail, and AI quality / cost / health
+monitoring.
 
-Built for a college hackathon, across two phases: a full working product first, then an
-"advanced AI copilot / civic intelligence" upgrade. Demo data, ward boundaries and SLA
-policy are **synthetic** and clearly labeled as such — see
-[Limitations](#limitations--honesty-notes).
+> **Design principle — AI proposes, deterministic code decides.**
+> The LLM only produces *signals* (category, severity signals, risk indicators, urgency,
+> confidence). Priority, routing, SLA, escalation, duplicate linking, hotspots, anomalies and
+> forecasts are computed by deterministic, tested, auditable code. The LLM's output is
+> schema-validated, sanitised and never trusted to drive a sensitive operation.
 
-## Live demo
+- **Live app:** [ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app) (Vercel)
+- **API:** [ai-bmc-complaint-triage.onrender.com](https://ai-bmc-complaint-triage.onrender.com) — [`/health`](https://ai-bmc-complaint-triage.onrender.com/health) (Render free tier: the first request after idle can take 30–60 s to cold-start)
 
-- **App:** [ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app)
-  (frontend, on Vercel)
-- **API:** [ai-bmc-complaint-triage.onrender.com](https://ai-bmc-complaint-triage.onrender.com)
-  (backend, on Render — [`/health`](https://ai-bmc-complaint-triage.onrender.com/health) for
-  a liveness check)
+> **Disclaimer:** demo/seed data, ward names, SLA targets and department names are
+> **synthetic application rules**, not official BMC operational data or policy.
 
-Demo accounts (password `Password123!` for all) are listed in [Setup](#setup). The backend
-is on Render's free tier, so the **first request after a period of inactivity can take up to
-~30-60 seconds** while the instance cold-starts — this is a hosting-tier characteristic, not
-a bug (see [Render deployment](#render-deployment)'s troubleshooting table). Full deployment
-instructions for both are further down if you want to deploy your own copy: [Render
-deployment](#render-deployment), [Vercel deployment](#vercel-deployment-frontend).
+---
 
 ## Table of contents
 
-- [Live demo](#live-demo)
-- [Problem statement](#problem-statement)
-- [Solution](#solution)
-- [Architecture](#architecture)
-- [Tech stack](#tech-stack)
-- [Features](#features)
-- [User roles](#user-roles)
-- [Complaint lifecycle](#complaint-lifecycle)
-- [AI architecture at a glance](#ai-architecture-at-a-glance)
-- [Setup](#setup)
-- [Environment variables](#environment-variables)
-- [Image storage (Cloudinary)](#image-storage-cloudinary)
-- [Database](#database)
-- [Running the app](#running-the-app)
-- [API overview](#api-overview)
-- [Testing](#testing)
-- [Security](#security)
-- [Production considerations](#production-considerations)
-- [Render deployment](#render-deployment)
-- [Vercel deployment (frontend)](#vercel-deployment-frontend)
-- [Limitations & honesty notes](#limitations--honesty-notes)
-- [Future improvements](#future-improvements)
-- [Demo walkthrough](#demo-walkthrough)
+1. [What's in the platform](#whats-in-the-platform)
+2. [System architecture](#system-architecture)
+3. [Tech stack](#tech-stack)
+4. [Repository layout](#repository-layout)
+5. [The complaint pipeline, step by step](#the-complaint-pipeline-step-by-step)
+6. [Intelligence capabilities in depth](#intelligence-capabilities-in-depth)
+   - [Structured AI output & safety](#61-structured-ai-output--ai-safety)
+   - [Evidence intelligence](#62-evidence-intelligence)
+   - [Hybrid decision engine](#63-hybrid-decision-engine)
+   - [Duplicate detection](#64-duplicate-detection)
+   - [Incident clustering & command view](#65-incident-clustering--incident-command-view)
+   - [Hotspots, heatmap & GIS](#66-hotspots-heatmap--gis)
+   - [Anomaly detection](#67-anomaly-detection)
+   - [Forecasting](#68-forecasting)
+   - [Department workload](#69-department-workload)
+   - [SLA engine](#610-sla-engine)
+   - [Escalation engine](#611-escalation-engine)
+   - [Human-in-the-loop & AI feedback](#612-human-in-the-loop--ai-feedback-loop)
+   - [Image intelligence](#613-image-intelligence)
+   - [Timeline & audit log](#614-complaint-timeline--audit-log)
+   - [Notifications](#615-notification-architecture)
+   - [Search](#616-search)
+   - [AI evaluation framework](#617-ai-evaluation-framework)
+   - [AI usage & cost monitoring](#618-ai-usage--cost-monitoring)
+   - [Observability & background jobs](#619-observability--background-jobs)
+7. [Frontend](#frontend)
+8. [Roles & permissions](#roles--permissions)
+9. [Setup](#setup)
+10. [Environment variables](#environment-variables)
+11. [Database & migrations](#database--migrations)
+12. [API reference](#api-reference)
+13. [Testing](#testing)
+14. [Security](#security)
+15. [Render deployment](#render-deployment) · [Vercel deployment](#vercel-deployment-frontend)
+16. [Troubleshooting](#troubleshooting)
+17. [Limitations & honesty notes](#limitations--honesty-notes)
+18. [Future improvements](#future-improvements)
 
-**Full documentation:** [`docs/architecture.md`](docs/architecture.md) ·
+Deeper reference docs: [`docs/architecture.md`](docs/architecture.md) ·
 [`docs/ai-pipeline.md`](docs/ai-pipeline.md) · [`docs/api.md`](docs/api.md) ·
-[`docs/database-schema.md`](docs/database-schema.md) ·
-[`docs/demo-flow.md`](docs/demo-flow.md)
+[`docs/database-schema.md`](docs/database-schema.md) · [`docs/demo-flow.md`](docs/demo-flow.md)
 
-> **Disclaimer:** this is a hackathon/demo system. Configured SLA values, sample ward data,
-> sample department names, and demo statistics are **not** official BMC operational data
-> and must not be represented as such unless sourced from an official dataset.
+---
 
-## Problem statement
+## What's in the platform
 
-> Build an AI-powered system to classify, prioritize and route civic complaints
-> (potholes, drainage, waste, water, streetlights, road damage, etc.) from text and images.
+| Area | What it does |
+|---|---|
+| **Citizen experience** | Multilingual submission with photos + map picker, guided AI assist, pre-submission duplicate warning, status tracking with a public-safe timeline and SLA countdown, feedback, reopen, in-app notifications |
+| **AI understanding** | One unified, Zod-validated structured analysis: category, subcategory, language, summary, severity signals, urgency, risk indicators, location relevance, recommended action, explanation factors, image assessment |
+| **Evidence intelligence** | Deterministic 0–100 evidence score from 9 auditable signals (+ red-flag penalties) |
+| **Decision engine** | Explainable priority: rules + AI signals + duplicate volume + history + evidence, with safety floors and human-review gates |
+| **Duplicates & incidents** | Semantic + lexical + geo + time + category + photo similarity; calibrated duplicate probability; persisted, reviewable suggestions; automatic incident grouping |
+| **GIS** | Markers, heatmap, DBSCAN hotspots, incident zones, anomaly areas, filters (category, severity, status, department, date) |
+| **Analytics** | Trends, week-over-week, department workload, SLA performance, AI confidence distribution, duplicate rate |
+| **Anomalies** | Robust statistical surge detection (volume / category / department / location / severity / resolution time) |
+| **Forecasting** | Holt linear-trend forecasts with prediction intervals and honest backtests — or an explicit "insufficient data" |
+| **SLA & escalation** | Configurable SLA policies, per-complaint snapshots, rule-based escalation events (SLA, unassigned high-severity, recurring problems, major incidents, surges) |
+| **Human review** | Approve / correct / false-positive / confirm or reject duplicates; every review stored beside the AI value for measurement |
+| **Governance** | Audit log, complaint timelines, AI evaluation suite, AI usage & cost tracking, request/latency/error metrics, background job history |
+| **Resilience** | AI outage ⇒ complaint preserved, rule-based fallback routing/priority/SLA, review flag, automatic retry job |
 
-## Solution
+---
 
-A citizen describes a problem in their own language, optionally with a photo. One unified
-OpenAI call extracts structured signals (category, severity, evidence quality) — but the
-AI never decides the outcome. Deterministic, documented, testable backend engines turn
-those signals into a priority score, a department assignment, an SLA deadline, and (via
-semantic + geographic duplicate detection) grouping into a citywide incident. Admins get an
-Intelligence Center that surfaces hotspots and lets them ask questions in plain English,
-safely translated into a constrained, allowlisted database filter — never AI-generated SQL.
-
-## Architecture
-
-See [`docs/architecture.md`](docs/architecture.md) for the full breakdown with Mermaid
-diagrams (system overview, AI pipeline sequence, the AI-admin-search security boundary).
-Short version:
+## System architecture
 
 ```
-Citizen / Officer / Admin UI (React)
-              |
-     Express REST API (JWT + RBAC)
-              |
-  Controller → Service → Model (parameterized SQL)
-              |
-     ┌────────┴─────────┐
-     v                   v
-  MySQL              OpenAI (structured JSON only,
-                      schema-validated before saving)
+ Citizen / Officer / Admin UI  (React 18 · Vite · TypeScript · Tailwind · TanStack Query · Recharts · Leaflet)
+                         │  HTTPS + JWT
+                         ▼
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │ Express API  (Helmet · CORS · rate limits · request-id/latency middleware) │
+ │   Controller  →  Service  →  Model (parameterised SQL, no ORM)             │
+ └───────────────────────────────────────────────────────────────────────────┘
+        │                     │                          │
+        ▼                     ▼                          ▼
+  Complaint pipeline    Analytics engines        Governance layer
+  (AI + rules)          (hotspot/anomaly/        (audit, timeline, jobs,
+                         forecast/workload)       metrics, AI usage, eval)
+        │                     │                          │
+        └───────────────┬─────┴──────────────────────────┘
+                        ▼
+                MySQL (Aiven in production)     OpenAI (chat + embeddings)     Cloudinary (images)
 ```
 
-**Controller → Service → Model.** All business logic lives in `backend/src/services` and is
-fully deterministic where it matters (priority, routing, SLA, incident escalation, hotspot
-detection, admin-search filter sanitization) — AI is only ever asked for *signals*, never
-for the operational decision.
+### Decision flow
+
+```
+Complaint submitted
+   │  validation · image signature check · perceptual hash + blur (local) · Cloudinary upload
+   ▼
+AI understanding ── validated, sanitised, injection-guarded ──▶ (fails? → rule-based fallback)
+   ▼
+Embedding → duplicate/related search (semantic + text + geo + time + category + photo)
+   ▼
+Evidence score  ──┐
+Historical repeat ─┼─▶ Hybrid decision engine ─▶ priority · review gates · decision factors
+Duplicate volume ──┘
+   ▼
+Deterministic routing (category → department) · SLA snapshot from policy
+   ▼
+Incident grouping (strong, category-compatible matches only)
+   ▼
+Timeline events · audit log · notifications  →  Staff review / SLA / escalation / analytics
+```
+
+---
 
 ## Tech stack
 
-| Layer | Choice |
+| Layer | Choice | Notes |
+|---|---|---|
+| Frontend | React 18, Vite, TypeScript, React Router 6, Tailwind CSS | Existing design system (`card`, `btn`, `badge`, `input` classes) extended, not replaced |
+| Server state | **TanStack Query** | Caching, polling, retries and loading/error states for the many dashboards |
+| Charts / maps | Recharts; React-Leaflet + `leaflet.markercluster` + `leaflet.heat` | OpenStreetMap tiles (no Google Maps) |
+| Backend | Node ≥ 18, Express 4, Zod, JWT, bcryptjs, Helmet, express-rate-limit, multer | Controller → Service → Model |
+| Database | MySQL 8+ (`mysql2`, parameterised SQL) | Aiven in production (TLS) |
+| AI | OpenAI Chat Completions (JSON mode) + Embeddings | Every call goes through one instrumented client (usage/latency/cost) |
+| Image analysis | `jimp` (pure JS) | dHash perceptual hash + Laplacian sharpness; no native binaries |
+| Email (optional) | `nodemailer` | Only active when `SMTP_HOST` is set |
+| Storage | Cloudinary | Server-side credentials only |
+
+---
+
+## Repository layout
+
+```
+backend/
+  database/
+    migrate.js                 migration runner (also used by AUTO_MIGRATE)
+    migrations/001_init.sql            core schema
+    migrations/002_intelligence.sql    AI-enrichment tables
+    migrations/003_civic_platform.sql  platform layer (additive)
+    seed.js · seed-complaints.js       demo data
+  evals/dataset.json           labelled AI evaluation cases
+  src/
+    app.js · server.js         wiring, middleware, jobs & auto-migrate on boot
+    config/                    env, db, openai (instrumented client), cloudinary
+    middleware/                auth/RBAC, upload (+ signature check), validate, error, requestLogger
+    routes/ · controllers/     thin HTTP layer
+    models/                    all SQL lives here
+    services/
+      ai/            analysis, prompts, response parser (Zod), aiSafety, aiUsage, embeddings, copilot…
+      decision/      evidence.service, decisionEngine.service
+      complaint/     analysisPipeline, priority, routing, sla, slaPolicy, escalation(+Engine),
+                     hotspot, timeline, incidentIntelligence, status, reopen…
+      duplicate/     duplicateDetection, incidentGrouping
+      analytics/     analytics, anomaly, forecast, departmentWorkload
+      review/        humanReview, feedbackMetrics
+      image/         imageIntelligence
+      evaluation/    evaluation
+      audit/ · notification/(+channels) · observability/ · jobs/ · admin/
+    utils/             constants (ALL tunables), geo (DBSCAN), textSimilarity, imageFormat, vectorMath, logger
+  tests/               unit/ + api/  (140 tests)
+frontend/
+  src/
+    pages/             citizen/ · officer/ · admin/ (Dashboard, MapView, Operations, SlaEscalations, AiSystem, AuditLog…)
+    components/        ui/kit (PageHeader, QueryBoundary, Tabs, Meter…), complaint/, layout/, map/, common/
+    services/          api.ts (axios) · platform.service.ts (typed client for the intelligence APIs)
+docs/                  architecture, AI pipeline, API, schema, demo flow
+render.yaml            Render blueprint (backend)
+```
+
+---
+
+## The complaint pipeline, step by step
+
+Implemented in `backend/src/services/complaint/analysisPipeline.service.js`.
+
+1. **Intake** — `POST /api/complaints` validates the body (Zod), checks each image's **real file signature** (magic bytes, not the client MIME), computes a perceptual hash + sharpness locally, uploads to Cloudinary, stores the complaint and images in one transaction, and writes a `CREATED` timeline event + audit entry.
+2. **AI understanding** — complaint text is sanitised (control characters stripped, prompt delimiters neutralised, length bounded, injection phrases detected) and sent with the photos. The response is parsed with Zod (enums coerced to safe values, markup stripped, lengths bounded). Any failure yields `success: false`, never an exception.
+3. **Embedding + related search** — the summary+description embedding is stored; candidates are pre-filtered by radius/time in SQL and scored in Node. **If embeddings are unavailable, detection degrades to a stricter text+geo path** instead of switching off.
+4. **Image similarity** — photo hashes are compared with related complaints and with recent photos elsewhere. Same picture at the same spot ⇒ duplicate candidate; same picture at a different location ⇒ a human-review reason.
+5. **Evidence score** and **historical repeat count** are computed.
+6. **Hybrid decision** — priority, factors and review gates (see §6.3).
+7. **Routing + SLA** — category → department (deterministic map); SLA hours resolved from `sla_policies` and **snapshotted** on the complaint.
+8. **Persistence** — `complaints` updated, `complaint_decisions` upserted (AI output, evidence signals, factors, engine version).
+9. **Status transitions** — `AI_ANALYZED`, then `ASSIGNED` unless a review is required (`NEEDS_REVIEW` on AI failure).
+10. **Incident grouping** — only *strong, category-compatible* matches join an incident; the incident's priority is re-escalated.
+11. **Notifications** to department officers; **audit** entry.
+
+**Graceful degradation:** every optional step (embedding, duplicates, image similarity, history, persistence of suggestions) is wrapped so a failure is logged and counted but never fails the complaint. If the AI call itself fails, the complaint still gets a fallback department (General Administration), a rule-based priority, an SLA, `NEEDS_REVIEW` status, and is retried by the `ai_retry` job (max 4 attempts). A **human-corrected complaint is never overwritten** by automatic re-analysis.
+
+---
+
+## Intelligence capabilities in depth
+
+### 6.1 Structured AI output & AI safety
+
+`services/ai/aiResponseParser.js`, `aiSafety.js`, `prompt.service.js`
+
+The model must return one JSON object with: `title`, `category` (enum), `subcategory`, `language`, `summary`, `normalized_description`, `confidence`, `missing_information`, `severity_signals` (11 booleans), **`urgency`** (`LOW/NORMAL/HIGH/IMMEDIATE`), **`recommended_action`**, **`location_relevance`** (`CLEAR/VAGUE/MISSING`), **`risk_indicators`** (allow-listed enum list), **`explanation_factors`** (≤5 short factual phrases — *no chain-of-thought is requested or stored*), `image_analysis`, `moderation`.
+
+Protections:
+
+| Threat | Defence |
 |---|---|
-| Frontend | React + Vite + TypeScript, React Router, Tailwind CSS, Recharts, Leaflet / react-leaflet + leaflet.markercluster |
-| Backend | Node.js + Express, JWT auth, bcryptjs, multer, Zod, Helmet, CORS, express-rate-limit |
-| Database | MySQL (plain parameterized SQL via `mysql2`, no ORM) |
-| AI | OpenAI Chat Completions (vision-capable model, JSON-mode) for unified complaint analysis, situation reports, admin search, officer copilot, guided assistant; OpenAI Embeddings for semantic duplicate detection |
-| Maps | Leaflet + OpenStreetMap tiles (no Google Maps) |
+| Malformed / non-JSON output | Parser returns failure → fallback path (never trusted) |
+| Hallucinated category / urgency / location relevance | `z.enum(...).catch(safeDefault)` (e.g. unknown category → `OTHER`) |
+| Invented risk indicators | Filtered against `RISK_INDICATORS` allow-list |
+| Excess output / markup / XSS in model text | `cleanModelText`: tags stripped, control chars removed, hard length caps |
+| Prompt injection via complaint text | Delimiter neutralisation, length cap, **pattern detection** (`ignore previous instructions`, `system:`, `set the priority to …`, etc.) ⇒ complaint still accepted but flagged for human review; system prompt tells the model the text is untrusted data |
+| AI controlling sensitive operations | It cannot: only signals reach the decision engine; priority/routing/SLA are code |
 
-## Features
+Older/partial responses still validate (all extended fields have defaults), so upgrades are backward-compatible.
 
-### Core (phase 1)
-- Multilingual complaint submission (English / Hindi / Hinglish / Marathi) with photo upload and map-based location picker
-- One unified, schema-validated AI analysis call per complaint — never blocks submission if AI fails (flags `NEEDS_REVIEW` instead)
-- Deterministic, explainable priority engine — the UI always shows *why*
-- Deterministic category → department routing, configured in one place
-- SLA deadlines per priority level with ON_TRACK/APPROACHING/BREACHED/COMPLETED_(WITHIN|AFTER)_SLA
-- Semantic duplicate detection (embeddings + geo + recency) and automatic incident grouping
-- Full lifecycle + status timeline; officer accept→start→resolve workflow with advisory AI before/after check; citizen feedback; in-app notifications
-- Admin dashboard, filterable complaint table, clustered priority map, analytics, flagged-review queue
-- Server-side RBAC (CITIZEN/OFFICER/ADMIN) — the frontend's claimed role is never trusted
+### 6.2 Evidence intelligence
 
-### Advanced AI / civic intelligence (phase 2)
-- **Guided complaint assistant** — one-shot AI follow-up questions + suggested rewrite while drafting, never a chatbot, never decides the final category
-- **AI enrichment** — title, normalized description, missing-information list, stored alongside the existing summary/category/signals
-- **Evidence Intelligence** — per-image quality/relevance/authenticity assessment (blurry, likely irrelevant, possible duplicate image, manipulated/suspicious, evidence confidence %) — flags for review, never auto-rejects
-- **Pre-submission duplicate warning** — "N similar complaints found nearby" before the citizen even submits, with a separately calibrated similarity threshold (see `docs/ai-pipeline.md` for why that had to be distinct from the post-submission threshold)
-- **Civic Intelligence Center** — one admin page combining verified deterministic stats, AI hotspot clusters, department/ward workload, recent incidents, and the latest AI situation report
-- **AI hotspot detection** — deterministic geo/time/category clustering (no ML model) surfacing "17 drainage complaints within 450m in the last 12 hours"
-- **AI admin natural-language search** — "Show unresolved potholes near schools" → AI proposes a constrained JSON filter → re-validated against an explicit allowlist → parameterized SQL. **The AI never produces or executes SQL.** Every query is audit-logged.
-- **AI daily situation report** — generated on demand from *only* verified aggregated statistics (never invented figures), stored with its source snapshot for auditability
-- **Officer AI Copilot** — advisory inspection/evidence/resolution checklist per complaint, cached after first generation
-- **Smart officer assignment** — ranks officers by current workload, critical-assignment count, and proximity to the complaint; the actual assignment stays an authorized admin action
-- **SLA escalation** — one-time notifications (officer on APPROACHING, officer+admin on BREACHED) with a durable escalation history table
-- **Citizen reopen flow** — dedicated endpoint with reason + optional evidence photo, `RESOLVED → REOPENED → ASSIGNED`
-- **Resolution quality verification upgrade** — SUPPORTED/UNCERTAIN/NOT_SUPPORTED + explicit signals, still fully admin-overridable
-- **Incident graph upgrade** — event timeline per incident (created/linked/unlinked/status-changed/merged), and admin-initiated incident **merge**
-- **Public transparency dashboard** — no-auth aggregate stats page with zero citizen-identifying data
+`services/decision/evidence.service.js` — pure function, fully unit-tested.
 
-## User roles
+Nine signals, each with `points`, `max`, `status` (`positive/neutral/negative`) and a plain-language `detail`:
 
-**Citizen** — submit (with guided AI assist + duplicate warning), track via timeline, give feedback, reopen. **Officer** — work their department's queue with an AI-assisted checklist, submit AI-verified resolutions. **Admin** — full visibility: dashboard, map, Intelligence Center, AI search, situation reports, incident management (including merge), review queue, analytics.
+| Signal | Max | Source |
+|---|---:|---|
+| Description detail | 15 | word count (spam ⇒ 0) |
+| Location detail | 15 | typed address + AI `location_relevance` |
+| Photo attached | 10 | image count |
+| Photo quality | 10 | AI verdict, **downgraded by locally measured blur** |
+| Photo matches complaint | 10 | AI `image_supports_claim` × evidence confidence |
+| AI classification confidence | 15 | model confidence |
+| Corroborating reports | 15 | strong, category-compatible related complaints |
+| Recurring location | 5 | earlier same-category reports within 150 m / 60 days |
+| Recent corroboration | 5 | related reports within 72 h |
 
-## Complaint lifecycle
+Signals that **do not apply** (e.g. photo quality with no photo, AI confidence when AI failed) are excluded from the denominator instead of counted as zero. Red flags subtract points: manipulated image (−15), unrelated image (−10), instruction-like text (−10). Bands: **STRONG ≥ 75**, **MODERATE ≥ 50**, **WEAK ≥ 30**, else **INSUFFICIENT** (shown in the UI as *Strong / Moderate / Limited / Very limited*).
+
+### 6.3 Hybrid decision engine
+
+`services/decision/decisionEngine.service.js` — pure, versioned (`DECISION_ENGINE.version`), every step emitted as a named **decision factor** `{source, label, points}`.
 
 ```
-SUBMITTED → AI_ANALYZED → ASSIGNED → IN_PROGRESS → RESOLUTION_SUBMITTED → RESOLVED
-                                                                              │
-                                                          citizen: not resolved / reopen
-                                                                              ▼
-                                                          REOPENED → ASSIGNED (back in queue)
+base priority (category tier + AI severity signals + duplicate volume + age)     ← priority.service (unchanged)
+ + AI risk indicators not already covered by a signal          (capped at +10)
+ + recurring-location history                                  (+8)
+ ± evidence adjustment                                         (STRONG +4 · INSUFFICIENT −5)
+ → safety floors:    injury_reported / emergency_access_blocked  ⇒ at least HIGH
+ → AI "IMMEDIATE" urgency honoured only if confidence ≥ 0.6 AND evidence ≠ INSUFFICIENT
+ → human-review gates
 ```
-Plus `NEEDS_REVIEW` (low AI confidence, evidence concerns, or AI failure) and `REJECTED`.
 
-## AI architecture at a glance
+It is deliberately **not an average**. Floors and gates are hard rules. Review gates: low AI confidence, `OTHER` with weak confidence, spam/irrelevance, unverified "immediate" urgency, instruction-like text, image concerns, **HIGH/CRITICAL priority resting on weak, uncorroborated evidence** ("verify before dispatch" — priority is *not* silently downgraded), and AI unavailable.
 
-Every AI call: strict JSON-only prompt → Zod schema validation → graceful degradation on
-failure (never blocks the user). The AI **only** ever produces signals or a constrained
-filter object — priority, routing, SLA, incident escalation, hotspot detection, and which
-database rows an admin search returns are **all computed by deterministic backend code**.
-Full detail, every prompt/schema, and the AI-admin-search security boundary diagram: see
-[`docs/ai-pipeline.md`](docs/ai-pipeline.md) and [`docs/architecture.md`](docs/architecture.md).
+All weights and thresholds live in `backend/src/utils/constants.js`.
+
+### 6.4 Duplicate detection
+
+`services/duplicate/duplicateDetection.service.js`, `models/duplicate.model.js`
+
+Signals: embedding cosine similarity, lexical similarity (word Jaccard + character-trigram Dice, works for Devanagari), distance, recency, category-family match, photo perceptual similarity.
+
+- **Duplicate probability** (0–1) is a calibrated blend used for ranking/explanation. With embeddings: `0.45·semantic + 0.20·text + 0.15·distance + 0.10·time + 0.10·category`; text-only: `0.55·text + 0.20·distance + 0.10·time + 0.15·category`; photo similarity blends in at 20 %.
+- **Linking rule** (`isLinkable`): probability ≥ 0.6, category-compatible, and — for text-only evidence — within 150 m (wording alone doesn't prove the same physical spot). Different-category neighbours stay "related", not "same incident".
+- Suggestions are **persisted** in `complaint_duplicates` with indicators (`Very similar meaning`, `Same spot (<50 m)`, `Visually similar photo`, …) and review state `SUGGESTED / CONFIRMED / REJECTED`.
+- **Nothing is ever deleted or silently merged.** Staff can confirm (link into an incident) or reject (detach from the incident; both reports remain).
+
+### 6.5 Incident clustering & incident command view
+
+Complaints that describe one real-world problem are grouped into an **incident** (`INC-YYYY-NNNN`) with escalated priority (geographic concentration + duration bonuses). `GET /api/incidents/:id` now also returns `intelligence`:
+
+complaint / open counts · categories affected · worst severity · first & latest report · **trend** (`RISING/STABLE/FALLING`, or `INSUFFICIENT_DATA` under 3 reports — never guessed) · **extent** (centroid, containing radius, bounds) · worst SLA state, breached count, next deadline · escalation events.
+
+### 6.6 Hotspots, heatmap & GIS
+
+`services/complaint/hotspot.service.js`, `utils/geo.js`
+
+- **Hotspot v2** uses **DBSCAN** (grid-indexed) per category — so an elongated problem (potholes along a road) becomes *one* hotspot rather than arbitrary circles. Defaults: 350 m radius, min 3 complaints.
+- Each hotspot reports count, radius, area, density/km², severity-weighted density, unresolved count & share, last-48 h count & share, incident count, dominant priority, and a transparent score:
+  `score = severityWeightedCount × (1 + recentShare) × (0.5 + 0.5 × unresolvedShare)`.
+- Filters (validated, parameterised): category, severity list, status (`open`/`closed`/exact), department, days or date range, radius, min complaints.
+- **Heatmap** returns severity-weighted `[lat, lng, weight]` points (resolved complaints count half).
+- The original greedy `detectHotspots` remains for the Intelligence Center.
+
+### 6.7 Anomaly detection
+
+`services/analytics/anomaly.service.js` — no LLM involved.
+
+The latest 24 h bucket is compared with up to 28 preceding daily buckets using a **robust z-score**: `(observed − median) / max(1.4826·MAD, √mean, 1)`. An anomaly must also have **score ≥ 3**, **≥ 5 events**, and **≥ 1.5× the baseline mean**, so "0 → 3" is never a surge and earlier spikes don't desensitise the detector.
+
+Dimensions: overall volume · per category · per department (incoming workload) · geographic (~1.1 km grid cells) · high/critical severity · resolution-time slowdown. Each anomaly carries score, baseline (median/mean/MAD/days), observed value, window, location, and a plain explanation. With fewer than 7 observable days it returns `sufficientData: false` and **no anomalies**.
+
+### 6.8 Forecasting
+
+`services/analytics/forecast.service.js`
+
+**Holt's linear trend** (double exponential smoothing) with ~80 % prediction intervals from in-sample errors and a **7-day hold-out backtest against a naive baseline** (shown in the UI, including when the model is *no better than a simple average*). Forecast series: overall daily volume, top-5 categories, top departments' incoming workload, and the **unresolved backlog**. Requires ≥ 14 days of history and ≥ 5 active days — otherwise `{available:false, reason}`. The current, incomplete day is excluded; negatives are floored at 0.
+
+### 6.9 Department workload
+
+`services/analytics/departmentWorkload.service.js` — per department: assigned, pending, in-progress, resolved, overdue, pending high-priority, average resolution hours, incoming 7 d vs previous 7 d (trend), category distribution, and
+`slaCompliance = withinSla / (withinSla + afterSla + openBreached)` — `null` (shown as "no data") until something has actually been judged, never a fake 100 %. Drill-down returns a 30-day incoming-vs-resolved series.
+
+### 6.10 SLA engine
+
+`services/complaint/sla.service.js`, `slaPolicy.service.js`, table `sla_policies`
+
+- Targets are **configurable per priority and optionally per category** (`category_key '*'` = default) and edited in the UI; every change is audited. Built-in constants are the fallback (defaults: Critical 12 h, High 24 h, Medium 48 h, Low 72 h, warn at 80 %).
+- The applicable hours are **snapshotted** in `complaints.sla_hours`, so a later policy edit doesn't rewrite history.
+- `slaSnapshot()` gives start, deadline, target hours, status (`ON_TRACK / APPROACHING / BREACHED / COMPLETED_*`), remaining time, breach/warning flags and resolution time.
+- A human priority correction recomputes the deadline from the original creation time.
+
+### 6.11 Escalation engine
+
+`services/complaint/escalation.service.js`, `escalationEngine.service.js`, table `escalation_events`
+
+Deterministic, idempotent (unique `dedupe_key`), each traceable to the rule and numbers that fired it:
+
+| Rule | Fires when |
+|---|---|
+| `SLA_APPROACHING` / `SLA_BREACHED` | complaint crosses its warning ratio / deadline (once per complaint per state) |
+| `HIGH_SEVERITY_UNASSIGNED` | CRITICAL still has no officer after 2 h / HIGH after 8 h |
+| `REPEATED_COMPLAINTS` | ≥ 3 same-category reports within 150 m / 30 days, at least one resolved and one open again |
+| `MAJOR_INCIDENT` | open incident reaches 5 (HIGH) or 10 (CRITICAL) complaints |
+| `SURGE_*` | anomaly score ≥ 4 (derivative department/severity surges are suppressed when a volume/category surge already explains them) |
+
+Events auto-resolve when their complaint/incident closes, notify admins, add complaint timeline entries and audit records, and can be **acknowledged** in the UI.
+
+### 6.12 Human-in-the-loop & AI feedback loop
+
+`services/review/humanReview.service.js`, `feedbackMetrics.service.js`
+
+Actions (`POST /api/complaints/:id/review`): **APPROVE**, **CORRECT** (category / priority / department; a category change re-routes deterministically unless a department is chosen; SLA recomputed), **FALSE_POSITIVE** (closes, preserves), **CONFIRM_DUPLICATE**, **REJECT_DUPLICATE**. Admins may review anything; officers only their own department's complaints. Each review stores the AI/system value next to the human value (`human_reviews`), an audit entry, and a timeline event.
+
+`GET /api/admin/ai-performance` reports (only from *staff-reviewed* complaints, with sample sizes): classification accuracy, priority agreement, routing agreement, correction/approval rate, false positives, duplicate precision, confidence calibration (avg confidence when right vs corrected), confidence distribution. Below 5 reviews it says **insufficient data**. **Nothing retrains a model from this data** — it is evaluation only.
+
+### 6.13 Image intelligence
+
+`services/image/imageIntelligence.service.js`, `utils/imageFormat.js`
+
+Computed **locally** at upload: 64-bit **dHash** perceptual hash, **Laplacian-variance sharpness**, brightness, dimensions. Magic-byte validation rejects forged files; header-parsed dimensions refuse decompression bombs (> 40 MP skip analysis). Used for blur downgrade in evidence, duplicate-photo detection, and reuse-at-another-location flags. These are *measurements*; what the photo *shows* comes only from the vision model and is presented as advisory. If a photo can't be decoded, analysis is reported as unavailable and the complaint continues.
+
+### 6.14 Complaint timeline & audit log
+
+- **Timeline** (`GET /complaints/:id/timeline`) merges the authoritative status history with `complaint_events` (AI analysed, evidence scored, priority set, department assigned, duplicates found, incident linked, human review, SLA warning/breach, escalated). Citizens receive **only public events with internal detail removed**.
+- **Audit log** (`audit_logs`, `GET /api/admin/audit-logs`): actor, role, action, entity, **before / after**, timestamp. Values are sanitised (credential-like keys redacted at any depth, strings truncated). Audit failures never break the audited operation. Covers creation, AI analysis/fallback, status changes, assignments, admin edits, reviews, incident merges/status, SLA policy changes, escalations, evaluation runs and job triggers.
+
+### 6.15 Notification architecture
+
+`services/notification/` — `notify()` is the single entry point; delivery goes through **channels** (`{name, isEnabled(), send()}`): `in_app` (always on, system of record) and `email` (nodemailer, only when `SMTP_HOST` is set, limited to `EMAIL_NOTIFY_TYPES`). Adding SMS/push = one new file in `channels/` + one registry line. A failing channel never throws into business logic.
+
+### 6.16 Search
+
+- Admin complaint list filters: text (description, address, AI title, complaint number), category, status, priority, **SLA status**, department, officer, **incident**, **citizen (name/email)**, **complaint id**, **date range**.
+- **Semantic search** (`GET /api/admin/search/semantic`): embeds the query and ranks recent complaints by meaning; automatically falls back to keyword search and *says so* (`mode: "keyword"`).
+- **AI natural-language search** (existing) still produces only a JSON filter validated against an allow-list — the model never writes SQL.
+
+### 6.17 AI evaluation framework
+
+`backend/evals/dataset.json`, `services/evaluation/evaluation.service.js`
+
+~60 hand-labelled cases (plus 15 summary-relevance checks in live mode): classification (English/Hindi/Hinglish/Marathi), summary relevance, routing, priority, duplicate scoring, prompt-injection detection, AI-output validation, and image checks (synthetic images for blur and perceptual similarity).
+
+- **Offline mode** (no OpenAI needed) runs everything deterministic and is used as a regression guard.
+- **Live mode** additionally calls the model for classification/summaries (small cost).
+- Tasks that can't run are reported **skipped with a reason** — never counted as agreement. Results are stored in `ai_evaluations`; run from the UI (AI & system → AI quality) or `POST /api/admin/evaluations/run`.
+
+### 6.18 AI usage & cost monitoring
+
+All OpenAI calls pass through one instrumented client (`config/openai.js`). Each call records use case, model, tokens, **estimated** cost (list-price table in `aiUsage.service.js`; unknown models report `null`), latency and success in `ai_usage`. `GET /api/admin/ai-usage` shows totals, failure rate, per-use-case and per-model breakdown, and daily cost, and flags the most expensive workflow.
+
+### 6.19 Observability & background jobs
+
+- **Request middleware**: `X-Request-Id` on every response, latency histograms per *route pattern*, status-class counters, structured JSON logs (method, route, status, ms, user id — never bodies, queries, headers or tokens). Errors are classified (`api`, `ai`, `database`, `external`, `image`, `job`) and kept in a bounded ring buffer.
+- `GET /api/admin/observability`: DB round-trip, uptime, slowest endpoints (p50/p95), error counts, recent errors, job definitions & history, AI status, active notification channels. Metrics are **in-process and reset on restart** (durable history lives in `ai_usage`, `job_runs`, `audit_logs`).
+- **Background jobs** (in-process, overlap-guarded, recorded in `job_runs`; no Redis/queue): `sla_check` 5 min · `escalation_rules` 10 min · `anomaly_scan` 15 min · `ai_retry` 10 min. Disable with `ENABLE_BACKGROUND_JOBS=false`; trigger manually from the UI. SLA checks also run lazily when an admin opens the SLA/intelligence views, so behaviour is correct even on a host that sleeps.
+
+---
+
+## Frontend
+
+Kept the existing stack and design system (Tailwind, Recharts, React-Leaflet, custom icon set) and extended it — a full migration to shadcn/Radix was not justified because the existing component vocabulary is already consistent. **TanStack Query** was added for server state; **`leaflet.heat`** for the heatmap layer. Heavy admin pages are **code-split** (`React.lazy`), so citizens and officers never download charts/maps.
+
+### Screens
+
+| Role | Route | Screen |
+|---|---|---|
+| Admin | `/admin` | **Command Center** — 8 headline metrics (each links to its detail view), review-queue banner, demand trend, SLA state, open hotspots, anomalies, department workload (pending vs overdue), AI confidence distribution, duplicate rate, critical & breached lists. Auto-refreshes every 60 s |
+| Admin | `/admin/map` | **GIS command center** — complaint markers (clustered), heatmap, DBSCAN hotspot zones, incident zones, anomaly areas; filters (category, severity, status incl. *unresolved*, department, date range); side panel with ranked hotspots and drill-down; deep-link `?focus=lat,lng` |
+| Admin | `/admin/complaints` | Search & filters (SLA, incident, citizen, department, dates), **semantic search** with keyword-fallback notice, responsive table → cards |
+| Admin | `/admin/incidents/:id` | Incident command view + **Incident intelligence** panel |
+| Admin | `/admin/review` | **Review queue** — why each complaint was flagged, quick approve, inspect & decide |
+| Admin | `/admin/operations` | **Anomalies** · **Forecast & expected demand** (with uncertainty band + backtest) · **Department workload** with drill-down |
+| Admin | `/admin/sla` | **SLA monitor** (sortable at-risk list) · **Escalations** (filter, acknowledge, evaluate now) · **Targets** (edit SLA policy) |
+| Admin | `/admin/ai` | **AI quality** (AI-vs-staff metrics, evaluation suite) · **Usage & cost** · **System health** (DB, latency, errors, jobs with run-now) |
+| Admin | `/admin/audit` | Audit log with filters, pagination and before/after diff |
+| Staff & Admin | `/complaints/:id` | Complaint page: SLA panel, **AI assessment** (category, priority, confidence, evidence strength, review reasons), **decision factors** with source tags, evidence signal breakdown, **related complaints** with link / "not related" actions, **staff review panel**, unified **timeline** with icons |
+| Citizen | `/complaints/:id` | Same page with a **public-safe timeline**, SLA countdown and related-complaint notice; no internal insights |
+| All | — | Existing citizen submit/track/feedback/reopen, officer queue + copilot, Intelligence Center, Analytics, public transparency dashboard |
+
+Cross-cutting UX: skeleton loading on every data page, explicit error panel with **Try again**, empty states, **"Insufficient data"** panels wherever the backend declines to produce a number, text labels alongside colour for priority/status/SLA, keyboard-operable tabs/tables with `aria-*` roles, `role="img"` chart labels, mobile scrollable nav (all links reachable), table→card layouts on small screens.
+
+---
+
+## Roles & permissions
+
+Roles are `CITIZEN`, `OFFICER` (staff, department-scoped) and `ADMIN` (system administrator). A separate "department admin" role was deliberately not added: officers are scoped to their department and admins have global scope, which covers the needs without a schema/JWT change. **Backend authorisation is authoritative**; frontend role checks are only UX.
+
+| Capability | Citizen | Officer | Admin |
+|---|:--:|:--:|:--:|
+| Submit / track own complaints, own timeline & SLA | ✅ | — | ✅ (view) |
+| Decision trace, evidence, related complaints | ❌ | ✅ | ✅ |
+| Review (approve/correct/duplicates) | ❌ | own department | ✅ all |
+| Analytics, hotspots, anomalies, forecast, SLA, escalations | ❌ | ❌ | ✅ |
+| Audit log, AI performance/usage/evaluation, observability, jobs | ❌ | ❌ | ✅ |
+| Edit SLA policy, run escalation rules | ❌ | ❌ | ✅ |
+
+---
 
 ## Setup
 
-Prerequisites: Node.js 18+, MySQL 8+, an OpenAI API key. Tested against both a local
-MySQL 9.4 install and a managed cloud MySQL instance (Aiven) over TLS (`DB_SSL_MODE=REQUIRED`).
+Prerequisites: Node.js 18+, MySQL 8+ (tested on 9.4 locally and Aiven over TLS), an OpenAI key (optional for local work — the app degrades gracefully without one), Cloudinary credentials (for photo uploads).
 
 ```bash
-# 1. Backend
+# Backend
 cd backend
 npm install
-cp .env.example .env   # then fill in DB credentials + OPENAI_API_KEY
-npm run migrate        # creates the database + tables (both migrations, idempotent)
-npm run seed            # departments, wards, demo users (admin/officers/citizens)
-npm run seed:complaints # ~60 realistic demo complaints, incidents, SLA breaches, feedback
-npm run dev              # http://localhost:5000
+cp .env.example .env            # fill DB credentials, JWT_SECRET, keys
+npm run migrate                 # applies 001 → 003 (also auto-applied on server start)
+npm run seed                    # departments, demo wards, admin, officers, citizens
+npm run seed:complaints         # ~60 synthetic complaints, incidents, SLA breaches, feedback
+npm run dev                     # http://localhost:5000
 
-# 2. Frontend (in a second terminal)
+# Frontend (second terminal)
 cd frontend
 npm install
-cp .env.example .env
-npm run dev              # http://localhost:5173
+cp .env.example .env            # VITE_API_BASE_URL=http://localhost:5000/api
+npm run dev                     # http://localhost:5173
 ```
 
-Demo accounts (password for all: `Password123!`):
+Demo accounts (password `Password123!`): `admin@civicconnect.demo`, `officer.roads@civicconnect.demo` (also `officer.<dept_code>@…`, e.g. `officer.water@…`), and seeded citizens such as `aarav.sharma@example.demo`. **Seed data is synthetic and labelled as such.**
 
-| Role | Email |
-|---|---|
-| Admin | `admin@civicconnect.demo` |
-| Officer (Roads) | `officer.roads@civicconnect.demo` |
-| Officer (any dept) | `officer.<dept_code>@civicconnect.demo` (e.g. `officer.solid_waste@...`) |
-| Citizen | any of the seeded citizens, e.g. `aarav.sharma@example.demo` |
+> **Use a throwaway database for tests and experiments.** The API tests create users/complaints in whatever database `.env` points at. Never point them at production.
+
+---
 
 ## Environment variables
 
-**backend/.env**
+**`backend/.env`** (see `.env.example`; never commit `.env`)
 
 | Variable | Purpose |
 |---|---|
-| `PORT`, `NODE_ENV` | server port / environment |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
-| `DB_SSL_MODE` | set to `REQUIRED` for a managed/cloud MySQL host (Aiven, PlanetScale, etc.) that mandates TLS; leave unset for local MySQL |
-| `JWT_SECRET`, `JWT_EXPIRES_IN` | auth token signing |
-| `OPENAI_API_KEY` | **server-side only, never sent to the frontend** |
-| `OPENAI_TEXT_MODEL`, `OPENAI_VISION_MODEL`, `OPENAI_EMBEDDING_MODEL` | model names, overridable without code changes |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | image storage - **server-side only**, see [Image storage](#image-storage-cloudinary) |
-| `NOMINATIM_BASE_URL` | optional reverse-geocoding endpoint |
-| `CORS_ORIGIN` | allowed frontend origin |
+| `PORT`, `NODE_ENV` | Port (Render injects `PORT`); `production` enables prod behaviour |
+| `DB_HOST/PORT/USER/PASSWORD/NAME` | MySQL connection |
+| `DB_SSL_MODE` | `REQUIRED` for managed MySQL (Aiven); unset locally |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Auth signing (use a long random secret) |
+| `OPENAI_API_KEY` | Server-side only. Without it AI features degrade to fallbacks |
+| `OPENAI_TEXT_MODEL`, `OPENAI_VISION_MODEL`, `OPENAI_EMBEDDING_MODEL` | Model names |
+| `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` | Image storage (server-side only) |
+| `NOMINATIM_BASE_URL` | Optional geocoding |
+| `CORS_ORIGIN` | Allowed frontend origin(s), comma-separated |
+| `AUTO_MIGRATE` | **Default `true`**: pending migrations are applied at server start (tracked in `_migrations`). Set `false` to migrate manually |
+| `ENABLE_BACKGROUND_JOBS` | Default `true`; `false` disables the scheduler (e.g. multiple instances) |
+| `SMTP_HOST/PORT/USER/PASS/FROM`, `EMAIL_NOTIFY_TYPES` | Optional email channel; empty `SMTP_HOST` disables it |
 
-**frontend/.env**
+**`frontend/.env`**: `VITE_API_BASE_URL` only — no secrets ever belong in frontend variables.
 
-| Variable | Purpose |
+---
+
+## Database & migrations
+
+Three ordered, tracked migrations in `backend/database/migrations/`:
+
+| Migration | Contents |
 |---|---|
-| `VITE_API_BASE_URL` | backend API base URL (e.g. `http://localhost:5000/api`) |
+| `001_init.sql` | users, departments, wards, complaints, images, status history, embeddings, incidents, feedback, notifications |
+| `002_intelligence.sql` | AI enrichment columns, incident events, SLA escalations, reopenings, situation reports, admin-query log |
+| `003_civic_platform.sql` | **Additive only** — see below |
 
-## Image storage (Cloudinary)
+**003 adds** tables `audit_logs`, `complaint_events`, `complaint_decisions`, `complaint_duplicates`, `human_reviews`, `sla_policies` (seeded with the four defaults), `escalation_events`, `ai_usage`, `ai_evaluations`, `job_runs`; columns `complaint_images.{phash, blur_score, brightness, width, height}` and `complaints.{sla_hours, review_status, ai_attempts}`; and composite indexes `(status, created_at)`, `(category, created_at)`, `(department_id, status)`, `(sla_status)`, `(review_required, review_status)`, plus an index on `phash`. **No existing data is modified or dropped.**
 
-Uploaded photos (complaint evidence, officer before/after, citizen reopen evidence) are
-stored on [Cloudinary](https://cloudinary.com), not local disk — this is what makes the
-backend deployable to a serverless/read-only-filesystem host like Vercel, and it also means
-photo URLs are already publicly reachable HTTPS URLs, so the OpenAI vision calls pass them
-straight through with no base64 round-trip.
+Migration safety notes: the runner applies files in order and records each in `_migrations`. MySQL DDL is not transactional, so if a migration is interrupted part-way, fix the cause and inspect before re-running. Validated: from an empty database (all three), and on top of a database holding seeded data.
 
-**Getting credentials** (free tier is plenty for this): sign up at
-[cloudinary.com/users/register/free](https://cloudinary.com/users/register/free), then on
-your [Console dashboard](https://console.cloudinary.com/) copy the **Cloud Name**, **API
-Key** and **API Secret** shown at the top into `backend/.env`:
+---
 
-```
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=123456789012345
-CLOUDINARY_API_SECRET=your-api-secret
-```
+## API reference
 
-Uploads land in Cloudinary under `civic-connect/original`, `civic-connect/resolution` and
-`civic-connect/reopen` folders (see `services/upload/cloudinary.service.js`). No code
-changes needed beyond setting those three variables — multer already uses in-memory
-storage (`middleware/upload.middleware.js`) and streams the buffer straight to Cloudinary.
+All routes are under `/api`, JSON, `Authorization: Bearer <jwt>`. Full request/response shapes for the original endpoints are in [`docs/api.md`](docs/api.md). New/changed endpoints:
 
-## Database
+**Complaint intelligence** (`/api/complaints/:id/…`)
 
-Full schema + ER diagram: [`docs/database-schema.md`](docs/database-schema.md). Two
-migrations, both idempotent (`backend/database/migrate.js` tracks what's applied):
-`001_init.sql` (core tables) and `002_intelligence.sql` (AI-enrichment columns on
-`complaints`, plus `incident_events`, `sla_escalations`, `complaint_reopenings`,
-`ai_situation_reports`, `ai_admin_queries`).
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/timeline` | owner (public-only view) / staff (full) | unified timeline |
+| GET | `/sla` | owner / staff | SLA snapshot |
+| GET | `/duplicates` | owner / staff | persisted duplicate suggestions with probability & indicators |
+| GET | `/evidence` | staff | evidence score + signal breakdown |
+| GET | `/decision-trace` | staff | AI signals, factors, evidence, review reasons, review history |
+| POST | `/review` | admin, officer (own dept) | approve / correct / false-positive / confirm or reject duplicate |
+| GET | `/reviews` | staff | review history |
 
-- `npm run migrate` — apply schema
-- `npm run seed` — departments, demo wards (labeled `(DEMO)`), 1 admin, 1 officer/department, 15 citizens
-- `npm run seed:complaints` — ~60 synthetic complaints across every category, several
-  incident clusters (2-12 complaints, spanning every duplicate-count priority bracket),
-  forced SLA breaches, resolved complaints with feedback — uses the real deterministic
-  priority/routing/SLA services, does not call OpenAI repeatedly (see Limitations)
+**Analytics** (`/api/analytics/…`, admin) — `overview` · `trends?days&category&department_id` · `heatmap` · `hotspots` (alias `clusters`) with `category, priority, department_id, status, days, date_from, date_to, radius, min_complaints` · `anomalies[?refresh=true]` · `forecast?horizon` · `department-workload[?department_id]`
 
-## Running the app
+**Operations (admin)** — `GET /sla` · `PUT /sla/policies` · `GET /escalations` · `PATCH /escalations/:id/acknowledge` · `POST /escalations/run` · `GET /admin/audit-logs` · `GET /admin/ai-usage` · `GET /admin/ai-performance` · `POST /admin/evaluations/run` · `GET /admin/evaluations/:runId` · `GET /admin/observability` · `POST /admin/jobs/:name/run` · `GET /admin/search/semantic?q=` · `GET /admin/map-data?…&days=`
 
-Backend: `npm run dev` (nodemon) or `npm start`. Frontend: `npm run dev` (Vite) or
-`npm run build && npm run preview`.
+**Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
 
-## API overview
+Rate limits: 300 req / 15 min general; 20 / 15 min on login/register; **20 / min on AI-triggering endpoints** (`ai-assist`, `duplicate-check`, AI/semantic search, situation report, evaluations).
 
-Full reference with request/response shapes: [`docs/api.md`](docs/api.md). Highlights of
-what's new in phase 2:
-
-```
-POST /api/complaints/ai-assist            POST /api/complaints/duplicate-check
-POST /api/complaints/:id/reopen            GET  /api/complaints/:id/similar
-POST /api/complaints/:id/ai-enrich         POST /api/complaints/:id/evidence-analysis
-
-POST /api/incidents/:id/merge
-
-GET  /api/admin/intelligence               GET  /api/admin/hotspots
-POST /api/admin/ai-search                  POST /api/admin/situation-report
-GET  /api/admin/situation-reports          GET  /api/admin/complaints/:id/recommend-officer
-POST /api/admin/sla/check                  GET  /api/admin/sla/escalations
-
-GET  /api/officer/ai-assistance/:id
-
-GET  /api/public/statistics   (no auth)
-```
+---
 
 ## Testing
 
-Backend: `npm test` (Jest + Supertest) — **61 tests across 9 suites, all passing** as of
-this build. Unit tests cover every deterministic engine (priority, routing, duplicate
-detection, hotspot clustering) plus AI response schema validation (malformed/malicious
-input handling) and — most importantly — the AI-admin-search allowlist sanitizer
-(`tests/unit/adminSearch.service.test.js`, which specifically tests that SQL-injection-
-shaped strings and out-of-allowlist fields never reach the database). API tests cover auth,
-complaint creation, RBAC on every admin/officer/intelligence endpoint, the full reopen
-flow, and incident merge (with the AI service mocked for determinism/no cost).
+```bash
+cd backend && npm test          # Jest + Supertest, --runInBand
+cd frontend && npx tsc --noEmit && npm run build
+```
 
-Frontend: `npx tsc --noEmit` (0 errors) and `npm run build` both pass.
+**140 backend tests, all passing** (61 pre-existing + 79 new), including:
+
+- *Unit:* evidence scoring, decision engine (safety floors, factor reconciliation, review gates, capped AI boosts), AI safety & parser hardening, robust-z anomaly scoring (surge / normal / sparse / robust-to-past-spike / insufficient data), Holt forecasting (unavailable cases, intervals, non-negative, backtest), DBSCAN, text similarity (incl. Devanagari), incident trend/extent, audit sanitisation, SLA snapshots, image sniffing, notification-channel failure isolation.
+- *Integration (real DB, AI mocked):* decision-trace persistence, citizen vs staff timeline visibility, review flows (correct → re-route + SLA + audit, approve, false-positive, department scoping, invalid input), corrected complaints not overwritten, duplicate suggestion → incident link → reject → confirm, **AI outage fallback + retry-job recovery**, prompt-injection review flag, SLA policy edit + audit, **escalation idempotency**, analytics authorisation and honest "insufficient data", filter injection rejection, evaluation storage, observability free of secrets, forged-image upload rejection.
+
+Tests need a MySQL database and the seeded demo users. **Run them against a local/throwaway database**, e.g. `DB_HOST=127.0.0.1 DB_NAME=bmc_test npm test` after `npm run migrate && npm run seed`.
+
+---
 
 ## Security
 
-Password hashing (bcrypt), JWT auth, server-side RBAC on every route, Helmet, CORS,
-rate limiting, Zod input validation, MIME-validated file uploads (never trusts the client
-extension), centralized error handling (no stack traces in production responses), no
-secrets in logs (`utils/logger.js` redacts known-sensitive keys) or in this README.
-Uploaded files never touch local disk — they're validated in memory and streamed straight
-to Cloudinary — and `CLOUDINARY_API_SECRET`/`OPENAI_API_KEY`/`JWT_SECRET`/DB credentials are
-all backend-only, never sent to or readable by the frontend. **The AI never generates or
-executes SQL** — admin search output is validated field-by-field against an explicit
-allowlist before any query is built; see
-[`docs/architecture.md`](docs/architecture.md#ai-admin-search--security-boundary).
+Bcrypt password hashing · JWT with per-request user re-fetch (roles never trusted from the token) · server-side RBAC on every route · Helmet · strict CORS · layered rate limits · Zod validation everywhere · parameterised SQL only (analytics filters are validated/allow-listed; **AI never writes SQL**) · upload hardening (declared MIME **and** real file signature, size/count limits, decompression-bomb guard, in-memory only → Cloudinary) · prompt-injection defences (§6.1) · errors never leak stack traces in production and include a `requestId` for support · logs and audit records redact credential-like keys and never include request bodies · secrets only in environment variables (`.env` is git-ignored; `.env.example` has no real values).
 
-**Secrets handling rules — read before deploying:**
-- **`.env` must never be committed.** It's git-ignored (`.gitignore`: `.env`, `.env.*`,
-  `!.env.example`) — only `.env.example` (no real values) is tracked.
-- **API keys must never be placed in frontend code.** The frontend only ever reads
-  `VITE_API_BASE_URL`; `OPENAI_API_KEY`, `CLOUDINARY_API_SECRET`, `JWT_SECRET` and the
-  Aiven DB credentials exist only in the backend's environment.
-- **Production secrets go into Render's Environment Variables tab**, not into any file in
-  this repo — see [Render deployment](#render-deployment) step 9.
-- **Credentials must never appear in this README, any other doc, or a commit message.**
-  If you ever paste a real key while asking for help (in an issue, a chat, a commit), treat
-  it as compromised and rotate it immediately.
-- Before every commit, double-check `git status`/`git diff` for anything that looks like a
-  credential, even in a file that "shouldn't" have one.
+**Rules:** never commit `.env`; never put keys in frontend code (only `VITE_API_BASE_URL`); rotate any credential that is ever pasted into a chat/issue/commit; use a throwaway DB for tests.
 
-## Production considerations
+Known hardening item: with `DB_SSL_MODE` set, TLS uses `rejectUnauthorized: false` (encrypted, not CA-verified) — pin your provider's CA for stricter production posture.
 
-When `DB_SSL_MODE` is set, the MySQL connection uses `ssl: { rejectUnauthorized: false }` —
-encrypted in transit, but not verified against the provider's CA certificate. That's enough
-to satisfy a managed host like Aiven that mandates TLS, but for production hardening pin
-the provider's CA bundle instead (`ca: fs.readFileSync('path/to/ca.pem')`) rather than
-trusting any certificate.
-
-This build runs the AI pipeline synchronously on the request and has no real job scheduler
-(SLA escalation runs lazily on Intelligence Center load / an explicit endpoint) — both
-documented tradeoffs appropriate for a demo, with upgrade paths noted in
-[Future improvements](#future-improvements). See also `docs/architecture.md`'s
-[Performance & observability](docs/architecture.md#performance--observability) section.
+---
 
 ## Render deployment
 
@@ -432,6 +642,7 @@ reads `process.env.PORT` with a local fallback (see `src/config/env.js`).
 | `CLOUDINARY_CLOUD_NAME` | your Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | your Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | your Cloudinary API secret |
+| `AUTO_MIGRATE` | `true` — applies pending additive migrations on boot (required for the schema to match this release) |
 | `NOMINATIM_BASE_URL` | `https://nominatim.openstreetmap.org` |
 | `CORS_ORIGIN` | your deployed frontend's URL, e.g. `https://your-app.vercel.app` (comma-separate multiple, e.g. add a preview-deployment domain) |
 
@@ -602,52 +813,56 @@ Vercel auto-deploys on every push to the connected branch, same as Render. Chang
 environment variable requires a manual redeploy (Vercel's dashboard prompts for this) since
 it's baked in at build time, not read live.
 
+
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| Server exits at start with *AUTO_MIGRATE failed* | The DB user lacks `CREATE/ALTER` privileges, or a migration was interrupted. Read the logged error; fix; if a migration half-applied, inspect the schema before re-running. Set `AUTO_MIGRATE=false` to run `npm run migrate` manually |
+| Photo upload returns *not a valid JPEG, PNG or WEBP image* | The file's real signature doesn't match its declared type (renamed/corrupt file). Re-export the image |
+| Complaints land in **Needs review** with "AI analysis unavailable" | `OPENAI_API_KEY` missing/invalid or OpenAI outage. Complaint is preserved with fallback routing; the `ai_retry` job re-analyses automatically (max 4 attempts); or use *Re-analyze* |
+| Anomalies / forecasts show **Insufficient data** | Working as designed: needs ≥ 7 days of history for anomalies, ≥ 14 days (and ≥ 5 active days) for forecasts. `npm run seed:complaints` creates backdated demo history |
+| SLA compliance shows "no data" | No complaint has yet been resolved/breached; it never shows a fake 100 % |
+| Admin pages 403 after login as officer | By design — analytics, SLA, audit, AI pages are admin-only |
+| Heatmap doesn't show | Toggle *Heatmap* in the map toolbar; check the date range/filters return complaints |
+| Metrics reset / look empty after a deploy | Request/error metrics are in-process and reset on restart; durable data is in `ai_usage`, `job_runs`, `audit_logs` |
+| Background jobs not running | `ENABLE_BACKGROUND_JOBS=false` or `NODE_ENV=test`. On Render free tier the instance sleeps when idle, so jobs only run while it is awake (SLA checks also run when an admin opens SLA views) |
+| CORS error from the frontend | `CORS_ORIGIN` on the backend must include the exact frontend origin (no trailing slash) |
+| First request very slow on Render | Free-tier cold start (30–60 s) |
+| Tests create data in the wrong database | Tests use whatever `.env` points to — point them at a throwaway DB |
+
+---
+
 ## Limitations & honesty notes
 
-- **Ward data is synthetic demo data**, explicitly labeled `(DEMO)` — not official BMC ward
-  boundary data. GPS-to-ward mapping isn't implemented; wards are assigned manually/via seed.
-- **SLA hours and escalation thresholds are application-level demo rules**, not a claim
-  about actual BMC SLA policy.
-- **There is no real background job scheduler.** SLA escalation runs lazily (Intelligence
-  Center load, or `POST /admin/sla/check`) rather than on a cron/queue — documented, not
-  hidden. Same for the AI pipeline itself, which runs inline on complaint submission rather
-  than async (see Future improvements).
-- **Image storage uses Cloudinary** (see [Image storage](#image-storage-cloudinary)) rather
-  than local disk, which is what makes the backend deployable to a serverless/read-only-
-  filesystem host. The code path was written and the server starts cleanly with it, but it
-  was **not end-to-end tested against a live Cloudinary account** in this session — that
-  requires your own API credentials, which I don't have. Please add your keys to
-  `backend/.env` and submit one test complaint with a photo to confirm before deploying.
-- `seed:complaints` synthesizes severity signals and does not call OpenAI repeatedly (to
-  avoid ~60 paid calls on every fresh seed) — it reuses the real deterministic priority/
-  routing/SLA code, but its text is templated, not model-generated. Every complaint created
-  *through the actual app* calls the real OpenAI pipeline, and that path — including all
-  phase-2 features — was exercised repeatedly against the live API during development.
-- **The pre-submission duplicate-check threshold had to be separately calibrated** from the
-  post-submission one, because stored embeddings include the AI summary while a draft
-  doesn't — found and fixed during testing, documented in `docs/ai-pipeline.md`.
-- **The UI was never opened in an actual browser during either build phase** — no browser
-  automation tool was available in this environment. What *was* verified: extensive live
-  HTTP-API and direct-database testing of every feature (see `docs/demo-flow.md`'s
-  verification notes for the full list, including two real bugs found and fixed live), a
-  clean TypeScript build, and a clean production bundle. Please click through the app
-  yourself before a live demo.
-- Before/after resolution verification and the officer AI copilot are advisory only; an
-  admin/officer can always override.
-- Spam/irrelevance moderation and evidence-quality concerns are soft `review_required`
-  flags, never automatic deletion or rejection.
+- **Seed/demo data, wards and SLA values are synthetic** application rules, not official BMC data or policy.
+- **The UI was not exercised in a real browser session in this build.** Verified instead: strict TypeScript (`tsc --noEmit` clean), a clean production build, 140 backend tests, live HTTP-level checks of the new endpoints, and a from-scratch server boot with migrations. Click through the main flows before a live demo (particularly the map layers and the new admin pages).
+- **Frontend scope.** Delivered: the command center, GIS command center, hotspot/anomaly/forecast/workload views, SLA & escalation center, AI performance/cost/health, audit log, review queue, complaint intelligence panels & timeline, incident intelligence, and richer complaint search. **Not built:** a redesigned citizen home page, a field-worker mobile view, TanStack Table (existing tables are simple and server-paginated), a command-palette global search, dedicated resource-intelligence / recurring-problem / resolution-effectiveness / infrastructure-health pages (their inputs exist — demand forecast table, `REPEATED_COMPLAINTS` escalations, hotspots — but there is no dedicated UI or backend model for intervention tracking), and an extended public dashboard. Real-time uses polling (30–120 s), not WebSockets.
+- **Metrics are per-instance and in-memory** (reset on restart); durable history is in MySQL.
+- **Costs are estimates** from a static list-price table and reported token counts — not billing data.
+- **Forecasting is statistical extrapolation** (Holt linear) without seasonality; with only weeks of data it is a coarse aid. The backtest is shown so you can judge it.
+- **Anomaly "location" is a ~1.1 km grid cell**, not an administrative boundary; ward mapping is not implemented (wards are demo data).
+- **Photo analysis:** dHash/sharpness are simple, honest measurements; they can miss heavily edited copies. Anything about *what a photo shows* comes from the vision model and is advisory.
+- **Text-only duplicate fallback** is weaker than the embedding path; it is deliberately stricter (must be within 150 m).
+- **Background jobs are in-process.** With multiple backend instances each would run them; set `ENABLE_BACKGROUND_JOBS=false` on all but one, or move to a real queue.
+- **Migrations on boot** are convenient for a single-instance deployment; for multi-instance production run `npm run migrate` as a release step and set `AUTO_MIGRATE=false`.
+- **Cloudinary** uploads require your credentials and were not end-to-end verified against a live account in this session.
+- Before/after resolution verification and the officer copilot remain advisory; staff can always override. Moderation and evidence concerns are soft review flags, never automatic rejection.
+- `seed:complaints` uses templated text and bypasses the AI pipeline (so seeded complaints have no decision trace until re-analysed).
 
 ## Future improvements
 
-- Real GPS→ward polygon lookup once official ward boundary data is available
-- A real job queue (e.g. BullMQ) for the AI pipeline and SLA escalation sweep, instead of inline/lazy execution
-- WebSocket/SSE push for notifications instead of polling
-- SMS notifications (explicitly out of scope for this build)
-- Officer availability/home-base data to make smart assignment's proximity ranking more precise
-- Historical dataset import pipeline (`data/raw` → `data/processed`, scaffolded but not built)
+- Dedicated UI for resource intelligence, recurring-problem tracking with interventions, and before/after resolution effectiveness (observed comparison, no causal claims)
+- Field-operations mobile view with nearby-issue map and one-tap status updates
+- Command-palette global search; TanStack Table for column visibility / bulk actions
+- Real GPS→ward polygon lookup; seasonality-aware forecasting once months of data exist
+- A real job queue and push/SSE notifications; SMS/push notification channels (the channel interface is ready)
+- Pin the DB provider CA certificate; per-department admin role if org structure requires it
+- Feed staff corrections into a *reviewed, versioned* evaluation set (never auto-retraining)
 
 ## Demo walkthrough
 
-Full 5-10 minute script: [`docs/demo-flow.md`](docs/demo-flow.md). Run it live at
-[ai-bmc-complaint-triage.vercel.app](https://ai-bmc-complaint-triage.vercel.app) — see
-[Live demo](#live-demo) for the account details and the Render cold-start note.
+See [`docs/demo-flow.md`](docs/demo-flow.md) for the original script. Suggested tour of the new platform: submit a complaint as a citizen (watch the timeline/SLA) → as admin open the **Command Center** → **GIS map** (toggle heatmap/hotspots) → open the complaint to see **AI assessment, evidence and decision factors** → correct the category in **Staff review** and check the **Audit log** → **Anomalies & forecast** (shows "insufficient data" on a fresh DB) → **SLA & escalations** → **AI & system** (run the offline evaluation suite).

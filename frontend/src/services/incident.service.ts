@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { ApiResponse, Complaint, Incident, PaginatedResponse } from '../utils/types';
+import type { IncidentIntelligence } from './platform.service';
 
 export interface IncidentEvent {
   id: number;
@@ -16,7 +17,7 @@ export async function listIncidents(filters: Record<string, unknown> = {}) {
 }
 
 export async function getIncident(id: number | string) {
-  const res = await api.get<ApiResponse<{ incident: Incident; complaints: Complaint[]; timeline: IncidentEvent[] }>>(
+  const res = await api.get<ApiResponse<{ incident: Incident; complaints: Complaint[]; timeline: IncidentEvent[]; intelligence?: IncidentIntelligence }>>(
     `/incidents/${id}`
   );
   return res.data.data;

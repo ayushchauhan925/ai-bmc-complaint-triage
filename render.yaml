@@ -54,6 +54,9 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Applies pending (additive) SQL migrations on boot. See README > Migrations.
+      - key: AUTO_MIGRATE
+        value: "true"
       - key: NOMINATIM_BASE_URL
         value: https://nominatim.openstreetmap.org
       - key: CORS_ORIGIN

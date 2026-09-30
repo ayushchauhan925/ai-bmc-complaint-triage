@@ -7,6 +7,8 @@ import type { IncidentEvent } from '../../services/incident.service';
 import { PriorityBadge } from '../../components/common/Badge';
 import { PageLoader } from '../../components/common/Spinner';
 import { ErrorState } from '../../components/common/EmptyState';
+import { IncidentIntel } from '../../components/complaint/IncidentIntel';
+import type { IncidentIntelligence } from '../../services/platform.service';
 import { ComplaintCard } from '../../components/complaint/ComplaintCard';
 import { getErrorMessage } from '../../services/api';
 import { formatCategory } from '../../utils/constants';
@@ -19,6 +21,7 @@ export default function AdminIncidentDetails() {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [timeline, setTimeline] = useState<IncidentEvent[]>([]);
+  const [intel, setIntel] = useState<IncidentIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,6 +34,7 @@ export default function AdminIncidentDetails() {
       setIncident(data.incident);
       setComplaints(data.complaints);
       setTimeline(data.timeline);
+      setIntel(data.intelligence ?? null);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -103,6 +107,8 @@ export default function AdminIncidentDetails() {
         <span className="badge border-slate-200 bg-slate-100 text-slate-600">{incident.department_name || 'Unassigned'}</span>
         <span className="text-xs text-slate-400">{complaints.length} linked complaint(s)</span>
       </div>
+
+      {intel && <IncidentIntel intel={intel} />}
 
       <div className="card mt-4 p-4">
         <label className="label">Incident status</label>

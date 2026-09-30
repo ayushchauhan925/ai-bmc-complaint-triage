@@ -47,7 +47,8 @@ export interface ComplaintImage {
   id: number;
   complaint_id: number;
   image_url: string;
-  image_type: 'ORIGINAL' | 'RESOLUTION';
+  image_type: 'ORIGINAL' | 'RESOLUTION' | 'REOPEN';
+  blur_score?: string | number | null;
   uploaded_at: string;
 }
 
@@ -156,6 +157,8 @@ export interface Complaint {
   status: ComplaintStatus;
   sla_deadline: string | null;
   sla_status: SlaStatus;
+  sla_hours?: number | null;
+  review_status?: 'PENDING' | 'APPROVED' | 'CORRECTED' | 'FALSE_POSITIVE';
   created_at: string;
   updated_at: string;
   resolved_at: string | null;

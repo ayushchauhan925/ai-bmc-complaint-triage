@@ -58,8 +58,9 @@ const env = {
   // Background jobs (SLA/escalation/anomaly scans, AI retries) run in-process. Disable with
   // ENABLE_BACKGROUND_JOBS=false (e.g. when running several instances or in tests).
   jobsEnabled: process.env.ENABLE_BACKGROUND_JOBS !== 'false' && process.env.NODE_ENV !== 'test',
-  // Apply pending SQL migrations on boot (opt-in; off by default so deploys never migrate silently).
-  autoMigrate: process.env.AUTO_MIGRATE === 'true',
+  // Apply pending SQL migrations on boot so a deploy is always consistent with its schema.
+  // Migrations are additive and tracked in _migrations; set AUTO_MIGRATE=false to opt out.
+  autoMigrate: process.env.AUTO_MIGRATE !== 'false' && process.env.NODE_ENV !== 'test',
 
   nominatimBaseUrl: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
 

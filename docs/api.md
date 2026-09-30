@@ -96,3 +96,7 @@ Standard HTTP status codes: `400` validation, `401` missing/invalid token, `403`
 authenticated but not permitted, `404` not found, `409` conflict (e.g. duplicate email,
 complaint already accepted by another officer), `500` unexpected (stack trace only in
 non-production, never sent to the client in production).
+
+---
+
+> **Update:** the platform layer added many endpoints (analytics, SLA policies, escalations, human review, timeline, decision trace, audit, AI usage/performance/evaluation, observability, semantic search). They are documented in the root [README API reference](../README.md#api-reference).

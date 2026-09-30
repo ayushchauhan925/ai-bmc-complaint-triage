@@ -93,8 +93,8 @@ const statistics = asyncHandler(async (req, res) => {
 });
 
 const mapData = asyncHandler(async (req, res) => {
-  const { category, priority_level, status, department_id, ward_id } = req.query;
-  const filters = { category, priority_level, status };
+  const { category, priority_level, status, department_id, ward_id, days } = req.query;
+  const filters = { category, priority_level, status, days };
   if (department_id) filters.department_id = Number(department_id);
   if (ward_id) filters.ward_id = Number(ward_id);
   const rows = await analyticsService.getMapData(filters);

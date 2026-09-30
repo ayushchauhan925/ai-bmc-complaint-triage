@@ -54,3 +54,24 @@ export const BoltIcon = ({ size, className }: IconProps) => (
 export const InboxIcon = ({ size, className }: IconProps) => (
   <svg {...base(size)} className={className}><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" /></svg>
 );
+export const ShieldIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>
+);
+export const ActivityIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+);
+export const FlameIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 002.5 2.5z" /></svg>
+);
+export const TrendingUpIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M23 6l-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /></svg>
+);
+export const ScrollIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h8" /></svg>
+);
+export const CpuIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" /></svg>
+);
+export const RefreshIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></svg>
+);

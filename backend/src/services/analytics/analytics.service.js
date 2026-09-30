@@ -147,10 +147,14 @@ async function getMapData(filters = {}) {
     clauses.push('c.ward_id = ?');
     params.push(filters.ward_id);
   }
+  if (filters.days) {
+    clauses.push('c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)');
+    params.push(Math.min(Math.max(Number(filters.days) || 30, 1), 365));
+  }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   const [rows] = await pool.query(
     `SELECT c.id, c.complaint_number, c.category, c.priority_level, c.status, c.latitude, c.longitude,
-            d.name AS department_name, c.incident_id
+            d.name AS department_name, c.incident_id, c.sla_status, c.created_at
      FROM complaints c
      LEFT JOIN departments d ON d.id = c.department_id
      ${where}`,

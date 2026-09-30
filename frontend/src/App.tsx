@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './routes/ProtectedRoute';
@@ -18,10 +18,15 @@ import SubmitComplaint from './pages/citizen/SubmitComplaint';
 import MyComplaints from './pages/citizen/MyComplaints';
 
 import { AdminLayout } from './components/layout/AdminLayout';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminComplaints from './pages/admin/Complaints';
-import AdminMapView from './pages/admin/MapView';
-import AdminAnalytics from './pages/admin/Analytics';
+// Heavy, admin-only pages (charts, maps) are code-split so citizens and officers never download them.
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminComplaints = lazy(() => import('./pages/admin/Complaints'));
+const AdminMapView = lazy(() => import('./pages/admin/MapView'));
+const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
+const Operations = lazy(() => import('./pages/admin/Operations'));
+const SlaEscalations = lazy(() => import('./pages/admin/SlaEscalations'));
+const AiSystem = lazy(() => import('./pages/admin/AiSystem'));
+const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
 import AdminIncidents from './pages/admin/Incidents';
 import AdminIncidentDetails from './pages/admin/IncidentDetails';
 import AdminReviewQueue from './pages/admin/ReviewQueue';
@@ -81,6 +86,10 @@ export default function App() {
         <Route path="/admin/incidents" element={<AdminIncidents />} />
         <Route path="/admin/incidents/:id" element={<AdminIncidentDetails />} />
         <Route path="/admin/review" element={<AdminReviewQueue />} />
+        <Route path="/admin/operations" element={<Operations />} />
+        <Route path="/admin/sla" element={<SlaEscalations />} />
+        <Route path="/admin/ai" element={<AiSystem />} />
+        <Route path="/admin/audit" element={<AuditLog />} />
       </Route>
 
       <Route
