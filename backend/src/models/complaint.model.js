@@ -33,10 +33,20 @@ async function create(conn, data) {
   return { id: result.insertId, complaintNumber };
 }
 
-async function addImage(conn, complaintId, imageUrl, imageType = 'ORIGINAL') {
+async function addImage(conn, complaintId, imageUrl, imageType = 'ORIGINAL', metrics = null) {
   await conn.query(
-    'INSERT INTO complaint_images (complaint_id, image_url, image_type) VALUES (?, ?, ?)',
-    [complaintId, imageUrl, imageType]
+    `INSERT INTO complaint_images (complaint_id, image_url, image_type, phash, blur_score, brightness, width, height)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      complaintId,
+      imageUrl,
+      imageType,
+      metrics?.phash ?? null,
+      metrics?.blurScore ?? null,
+      metrics?.brightness ?? null,
+      metrics?.width ?? null,
+      metrics?.height ?? null,
+    ]
   );
 }
 
@@ -222,7 +232,27 @@ async function findNearby({ latitude, longitude, radiusMeters, sinceDate, exclud
   return rows;
 }
 
+/**
+ * Historical pattern: how many earlier complaints of the same category were filed close to
+ * this spot within the look-back window (regardless of status). Bounding box in SQL, exact
+ * distance in the caller's radius via the box size - good enough for a 150 m pattern check.
+ */
+async function countHistoricalNearby({ latitude, longitude, category, radiusMeters, days, excludeId }) {
+  const latDelta = radiusMeters / 111000;
+  const lonDelta = radiusMeters / (111000 * Math.cos((latitude * Math.PI) / 180) || 1);
+  const [[row]] = await pool.query(
+    `SELECT COUNT(*) AS cnt FROM complaints
+     WHERE category = ? AND id != ?
+       AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
+       AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+       AND created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+    [category, excludeId || 0, latitude - latDelta, latitude + latDelta, longitude - lonDelta, longitude + lonDelta, days]
+  );
+  return Number(row.cnt);
+}
+
 module.exports = {
+  countHistoricalNearby,
   create,
   addImage,
   findById,

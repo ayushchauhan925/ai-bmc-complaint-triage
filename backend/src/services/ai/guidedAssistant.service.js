@@ -15,6 +15,7 @@ async function getGuidedAssistance(draftText) {
 
   try {
     const completion = await client.chat.completions.create({
+      useCase: 'guided_assistant',
       model: env.openai.textModel,
       messages: [
         { role: 'system', content: promptService.buildGuidedAssistSystemPrompt() },

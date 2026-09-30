@@ -13,6 +13,7 @@ async function verifyBeforeAfter({ description, beforeImageUrl, afterImageUrl })
 
   try {
     const completion = await client.chat.completions.create({
+      useCase: 'resolution_verification',
       model: env.openai.visionModel,
       messages: [
         { role: 'system', content: promptService.buildBeforeAfterSystemPrompt() },

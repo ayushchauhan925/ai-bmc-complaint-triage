@@ -84,7 +84,13 @@ async function run() {
   await conn.end();
 }
 
-run().catch((err) => {
-  console.error('Migration failed:', err.message);
-  process.exit(1);
-});
+module.exports = { run };
+
+// Executed directly (`npm run migrate`): run and exit. When required by the server
+// (AUTO_MIGRATE=true) the caller decides how to handle failure.
+if (require.main === module) {
+  run().catch((err) => {
+    console.error('Migration failed:', err.message);
+    process.exit(1);
+  });
+}

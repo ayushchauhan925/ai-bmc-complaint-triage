@@ -3,6 +3,7 @@ const env = require('../../config/env');
 const promptService = require('./prompt.service');
 const { validateAnalysisResponse } = require('./aiResponseParser');
 const logger = require('../../utils/logger');
+const { sanitizeComplaintText } = require('./aiSafety');
 
 const MAX_RETRIES = 1;
 
@@ -16,6 +17,7 @@ async function callModel(messages) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     try {
       const completion = await client.chat.completions.create({
+        useCase: 'complaint_analysis',
         model: env.openai.visionModel,
         messages,
         response_format: { type: 'json_object' },
@@ -44,9 +46,10 @@ async function callModel(messages) {
 async function analyzeComplaint({ description, imageUrls = [] }) {
   // Images live on Cloudinary at a public HTTPS URL, so they're passed straight through -
   // no local file read / base64 conversion needed (see cloudinary.service.js).
+  const safeInput = sanitizeComplaintText(description);
   const messages = [
     { role: 'system', content: promptService.buildAnalysisSystemPrompt() },
-    { role: 'user', content: promptService.buildAnalysisUserContent(description, imageUrls) },
+    { role: 'user', content: promptService.buildAnalysisUserContent(safeInput.text, imageUrls) },
   ];
 
   const modelResult = await callModel(messages);
@@ -60,7 +63,11 @@ async function analyzeComplaint({ description, imageUrls = [] }) {
     return { success: false, failureReason: 'AI returned an unexpected response format.' };
   }
 
-  return { success: true, analysis: validated.data };
+  return {
+    success: true,
+    analysis: validated.data,
+    safety: { injectionSuspected: safeInput.injectionSuspected, truncated: safeInput.truncated },
+  };
 }
 
 module.exports = { analyzeComplaint };

@@ -2,12 +2,23 @@ const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
 const { uploadComplaintImage } = require('../upload/cloudinary.service');
 const AppError = require('../../utils/AppError');
+const imageIntelligence = require('../image/imageIntelligence.service');
+const timelineService = require('./timeline.service');
+const auditService = require('../audit/audit.service');
 
 async function createComplaint({ userId, description, latitude, longitude, address, imageFiles }) {
   // Upload to Cloudinary before opening the transaction - no point holding a DB
   // transaction open across slow network calls to a third-party service.
-  const imageUrls = await Promise.all(
-    (imageFiles || []).map((file) => uploadComplaintImage(file.buffer, 'original'))
+  // Local image measurements (perceptual hash, sharpness) are best-effort: a failure never
+  // blocks the upload.
+  const images = await Promise.all(
+    (imageFiles || []).map(async (file) => {
+      const [url, measured] = await Promise.all([
+        uploadComplaintImage(file.buffer, 'original'),
+        imageIntelligence.analyzeBuffer(file.buffer),
+      ]);
+      return { url, metrics: measured.analysed ? measured : null };
+    })
   );
 
   const conn = await pool.getConnection();
@@ -20,8 +31,8 @@ async function createComplaint({ userId, description, latitude, longitude, addre
     complaintId = created.id;
     complaintNumber = created.complaintNumber;
 
-    for (const imageUrl of imageUrls) {
-      await complaintModel.addImage(conn, complaintId, imageUrl, 'ORIGINAL');
+    for (const image of images) {
+      await complaintModel.addImage(conn, complaintId, image.url, 'ORIGINAL', image.metrics);
     }
 
     await complaintModel.addHistory(conn, complaintId, null, 'SUBMITTED', userId, 'Complaint submitted by citizen.');
@@ -33,6 +44,19 @@ async function createComplaint({ userId, description, latitude, longitude, addre
   } finally {
     conn.release();
   }
+
+  await timelineService.recordEvent(complaintId, timelineService.EVENT_TYPES.CREATED, 'Complaint received', {
+    details: { complaintNumber, photoCount: images.length },
+    actorId: userId,
+    visibility: 'PUBLIC',
+  });
+  await auditService.record({
+    actor: { id: userId, role: 'CITIZEN' },
+    action: 'COMPLAINT_CREATED',
+    entityType: 'complaint',
+    entityId: complaintId,
+    next: { complaintNumber, photoCount: images.length },
+  });
 
   return getComplaintDetail(complaintId);
 }

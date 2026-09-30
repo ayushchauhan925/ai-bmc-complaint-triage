@@ -36,6 +36,7 @@ async function naturalLanguageToFilters(query) {
 
   try {
     const completion = await client.chat.completions.create({
+      useCase: 'admin_search',
       model: env.openai.textModel,
       messages: [
         { role: 'system', content: promptService.buildAdminSearchSystemPrompt(describeAllowedFields()) },

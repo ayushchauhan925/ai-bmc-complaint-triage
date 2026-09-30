@@ -56,6 +56,7 @@ async function generateSituationReport(generatedByUserId) {
 
   try {
     const completion = await client.chat.completions.create({
+      useCase: 'situation_report',
       model: env.openai.textModel,
       messages: [
         { role: 'system', content: promptService.buildSituationReportSystemPrompt() },

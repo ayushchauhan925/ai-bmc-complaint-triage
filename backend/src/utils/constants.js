@@ -201,6 +201,10 @@ const DUPLICATE_DETECTION = {
     time: 0.15,
   },
   maxCandidates: 50,
+  // Minimum calibrated duplicate probability (and compatible category) to join an incident.
+  linkProbability: 0.6,
+  // Photos whose perceptual-hash similarity is at least this are treated as the same picture.
+  imageDuplicateSimilarity: 0.9,
   // A complaint is grouped into an incident once at least this many related complaints are found.
   minRelatedForIncident: 1,
 };
@@ -236,6 +240,91 @@ const SLA_ESCALATION = {
     APPROACHING: ['OFFICER'],
     BREACHED: ['OFFICER', 'ADMIN'],
   },
+};
+
+
+// Evidence intelligence (deterministic 0-100 score; see services/decision/evidence.service.js).
+const EVIDENCE = {
+  weights: {
+    text: 15,
+    location: 15,
+    imageAvailable: 10,
+    imageQuality: 10,
+    imageSupports: 10,
+    aiConfidence: 15,
+    corroboration: 15,
+    history: 5,
+    temporal: 5,
+  },
+  penalties: { manipulated: 15, irrelevantImage: 10, injection: 10 },
+  bands: { strong: 75, moderate: 50, weak: 30 },
+  // Laplacian variance below this on a downscaled greyscale copy is treated as blurry.
+  blurThreshold: 60,
+  recentCorroborationHours: 72,
+};
+
+// Hybrid decision engine (services/decision/decisionEngine.service.js). Every adjustment is
+// bounded and emitted as a named decision factor; the LLM only supplies inputs.
+const DECISION_ENGINE = {
+  version: '2.0',
+  riskIndicatorPoints: {
+    INJURY_RISK: 8,
+    ELECTRICAL_HAZARD: 8,
+    FIRE_RISK: 8,
+    STRUCTURAL_RISK: 8,
+    VULNERABLE_GROUPS_AFFECTED: 5,
+  },
+  riskIndicatorCap: 10,
+  repeatLocation: { points: 8, radiusMeters: 150, days: 60 },
+  evidenceAdjustment: { STRONG: 4, INSUFFICIENT: -5 },
+  // Hard safety floors: these signals guarantee at least this level regardless of score.
+  safetyFloors: [
+    { signal: 'injury_reported', level: 'HIGH', label: 'Injury reported' },
+    { signal: 'emergency_access_blocked', level: 'HIGH', label: 'Emergency access blocked' },
+  ],
+  lowConfidenceReview: 0.4,
+  otherCategoryReviewConfidence: 0.6,
+  immediateUrgencyMinConfidence: 0.6,
+};
+
+// Statistical anomaly detection (services/analytics/anomaly.service.js).
+const ANOMALY = {
+  bucketHours: 24,
+  baselineDays: 28,
+  minBaselineDays: 7,
+  scoreThreshold: 3, // robust z-score
+  minObserved: 5, // ignore tiny absolute counts
+  minRatio: 1.5, // must also be at least 1.5x the baseline mean
+};
+
+// Short-term forecasting (services/analytics/forecast.service.js).
+const FORECAST = {
+  historyDays: 60,
+  minHistoryDays: 14,
+  minActiveDays: 5,
+  horizonDays: 7,
+  alpha: 0.4,
+  beta: 0.15,
+  intervalZ: 1.28, // ~80% prediction interval
+};
+
+// Rule-based escalation engine (services/complaint/escalationEngine.service.js).
+const ESCALATION_RULES = {
+  // Critical/High complaints still not assigned to an officer after this many hours.
+  unassignedHours: { CRITICAL: 2, HIGH: 8 },
+  // Same category reported again at (roughly) the same place after an earlier one was resolved.
+  repeat: { minReports: 3, days: 30, radiusMeters: 150 },
+  majorIncident: { minComplaints: 5 },
+  surgeMinScore: 4,
+};
+
+// Hotspot v2 (region growing over complaints; see hotspot.service.js detectHotspotsAdvanced).
+const HOTSPOT_V2 = {
+  radiusMeters: 350,
+  minComplaints: 3,
+  defaultDays: 14,
+  severityWeight: { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 },
+  recentHours: 48,
 };
 
 // Allowlisted fields/operators for the AI admin natural-language search (Section 9). The
@@ -275,5 +364,11 @@ module.exports = {
   HOTSPOT_DETECTION,
   INCIDENT_ESCALATION,
   SLA_ESCALATION,
+  EVIDENCE,
+  DECISION_ENGINE,
+  ANOMALY,
+  FORECAST,
+  ESCALATION_RULES,
+  HOTSPOT_V2,
   ADMIN_SEARCH_ALLOWED_FIELDS,
 };

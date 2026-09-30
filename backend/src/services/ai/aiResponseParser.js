@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const { CATEGORIES } = require('../../utils/constants');
+const { cleanModelText } = require('./aiSafety');
 
 const severitySignalsSchema = z.object({
   traffic_hazard: z.boolean().default(false),
@@ -33,21 +34,46 @@ const imageAnalysisSchema = z
   })
   .default({});
 
+// Bounded, markup-free text for every free-text field the model produces.
+const cleanText = (max) => z.string().transform((v) => cleanModelText(v, max));
+
+// Risk indicators the model may report. Anything outside this list is dropped (not trusted).
+const RISK_INDICATORS = [
+  'INJURY_RISK',
+  'TRAFFIC_ACCIDENT_RISK',
+  'HEALTH_HAZARD',
+  'FLOOD_RISK',
+  'STRUCTURAL_RISK',
+  'ELECTRICAL_HAZARD',
+  'FIRE_RISK',
+  'ENVIRONMENTAL_HAZARD',
+  'VULNERABLE_GROUPS_AFFECTED',
+];
+
 const analysisResponseSchema = z.object({
-  title: z.string().trim().min(1).max(255).catch('Civic complaint'),
+  title: cleanText(255).pipe(z.string().min(1)).catch('Civic complaint'),
   category: z.enum(CATEGORIES).catch('OTHER'),
-  subcategory: z.string().nullable().optional().default(null),
+  subcategory: z.string().nullable().optional().default(null).transform((v) => cleanModelText(v, 50)),
   language: z.enum(['ENGLISH', 'HINDI', 'HINGLISH', 'MARATHI', 'OTHER']).catch('OTHER'),
-  summary: z.string().min(1).max(1000),
-  normalized_description: z.string().nullable().optional().default(null),
+  summary: cleanText(1000).pipe(z.string().min(1)),
+  normalized_description: z.string().nullable().optional().default(null).transform((v) => cleanModelText(v, 1000)),
   confidence: z.number().min(0).max(1).catch(0.5),
-  missing_information: z.array(z.string()).catch([]),
+  missing_information: z.array(cleanText(160)).max(8).catch([]),
   severity_signals: severitySignalsSchema.default({}),
+  // --- Extended structured output (all optional: older/partial responses still validate) ---
+  urgency: z.enum(['LOW', 'NORMAL', 'HIGH', 'IMMEDIATE']).catch('NORMAL'),
+  recommended_action: z.string().nullable().optional().default(null).transform((v) => cleanModelText(v, 300)),
+  location_relevance: z.enum(['CLEAR', 'VAGUE', 'MISSING']).catch('VAGUE'),
+  risk_indicators: z
+    .array(z.string())
+    .catch([])
+    .transform((arr) => [...new Set(arr.map((x) => String(x).toUpperCase()))].filter((x) => RISK_INDICATORS.includes(x))),
+  explanation_factors: z.array(cleanText(160)).max(5).catch([]),
   image_analysis: imageAnalysisSchema,
   moderation: z
     .object({
       is_spam_or_irrelevant: z.boolean().default(false),
-      reason: z.string().nullable().optional().default(null),
+      reason: z.string().nullable().optional().default(null).transform((v) => cleanModelText(v, 200)),
     })
     .default({}),
 });
@@ -127,6 +153,7 @@ function makeValidator(schema) {
 }
 
 module.exports = {
+  RISK_INDICATORS,
   validateAnalysisResponse: makeValidator(analysisResponseSchema),
   validateBeforeAfterResponse: makeValidator(beforeAfterResponseSchema),
   validateGuidedAssistResponse: makeValidator(guidedAssistResponseSchema),

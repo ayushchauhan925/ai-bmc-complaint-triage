@@ -13,6 +13,7 @@ async function generateChecklist(complaint) {
 
   try {
     const completion = await client.chat.completions.create({
+      useCase: 'officer_copilot',
       model: env.openai.textModel,
       messages: [
         { role: 'system', content: promptService.buildOfficerChecklistSystemPrompt() },

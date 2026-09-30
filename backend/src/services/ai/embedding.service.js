@@ -10,6 +10,7 @@ async function generateEmbedding(text) {
   }
   try {
     const response = await client.embeddings.create({
+      useCase: 'embedding',
       model: env.openai.embeddingModel,
       input: text.slice(0, 8000),
     });

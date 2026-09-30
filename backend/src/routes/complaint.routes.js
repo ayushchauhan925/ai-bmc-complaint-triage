@@ -3,7 +3,7 @@ const complaintController = require('../controllers/complaint.controller');
 const feedbackController = require('../controllers/feedback.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { validateBody } = require('../middleware/validate.middleware');
-const { upload } = require('../middleware/upload.middleware');
+const { upload, verifyImageContent } = require('../middleware/upload.middleware');
 const {
   createComplaintSchema,
   updateComplaintSchema,
@@ -23,6 +23,7 @@ router.post(
   '/',
   roleMiddleware(ROLES.CITIZEN),
   upload.array('images', 5),
+  verifyImageContent,
   validateBody(createComplaintSchema),
   complaintController.create
 );
@@ -70,6 +71,7 @@ router.post(
   '/:id/reopen',
   roleMiddleware(ROLES.CITIZEN),
   upload.single('image'),
+  verifyImageContent,
   validateBody(reopenSchema),
   complaintController.reopen
 );

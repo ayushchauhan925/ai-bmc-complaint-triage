@@ -42,6 +42,25 @@ const env = {
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
 
+  // Optional email channel (nodemailer/SMTP). Disabled unless SMTP_HOST is set.
+  email: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'Civic Connect <no-reply@civic-connect.local>',
+    notifyTypes: (process.env.EMAIL_NOTIFY_TYPES || 'SLA_ESCALATION,ESCALATION,COMPLAINT_ASSIGNED')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean),
+  },
+
+  // Background jobs (SLA/escalation/anomaly scans, AI retries) run in-process. Disable with
+  // ENABLE_BACKGROUND_JOBS=false (e.g. when running several instances or in tests).
+  jobsEnabled: process.env.ENABLE_BACKGROUND_JOBS !== 'false' && process.env.NODE_ENV !== 'test',
+  // Apply pending SQL migrations on boot (opt-in; off by default so deploys never migrate silently).
+  autoMigrate: process.env.AUTO_MIGRATE === 'true',
+
   nominatimBaseUrl: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
 
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
