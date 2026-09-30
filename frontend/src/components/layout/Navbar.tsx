@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -9,6 +9,23 @@ export function Navbar() {
   const { notifications, unreadCount, markRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const rightRef = useRef<HTMLDivElement>(null);
+
+  // Close open menus on outside click or Escape.
+  useEffect(() => {
+    if (!open && !menuOpen) return undefined;
+    const onDown = (e: MouseEvent) => {
+      if (rightRef.current && !rightRef.current.contains(e.target as Node)) { setOpen(false); setMenuOpen(false); }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setMenuOpen(false); } };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open, menuOpen]);
+
+  const roleLabel = user?.role === 'ADMIN' ? 'Admin' : user?.role === 'OFFICER' ? 'Officer' : 'Citizen';
+  const roleCls = user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : user?.role === 'OFFICER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700';
 
   const homePath = user?.role === 'ADMIN' ? '/admin' : user?.role === 'OFFICER' ? '/officer' : '/';
 
@@ -21,10 +38,12 @@ export function Navbar() {
         </Link>
 
         {user && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" ref={rightRef}>
             <div className="relative">
               <button
-                onClick={() => setOpen((o) => !o)}
+                aria-haspopup="true"
+                aria-expanded={open}
+                onClick={() => { setOpen((o) => !o); setMenuOpen(false); }}
                 className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
                 aria-label="Notifications"
               >
@@ -67,16 +86,23 @@ export function Navbar() {
 
             <div className="relative">
               <button
-                onClick={() => setMenuOpen((o) => !o)}
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                onClick={() => { setMenuOpen((o) => !o); setOpen(false); }}
                 className="flex items-center gap-2 rounded-full border border-slate-200 py-1 pl-1 pr-3 text-sm hover:bg-slate-50"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="hidden sm:inline text-slate-700">{user.name}</span>
+                <span className={`hidden rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide sm:inline ${roleCls}`}>{roleLabel}</span>
               </button>
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="border-b border-slate-100 px-4 py-2">
+                    <p className="truncate text-sm font-medium text-slate-800">{user.name}</p>
+                    <p className="truncate text-xs text-slate-400">{user.email}</p>
+                  </div>
                   <Link
                     to="/profile"
                     onClick={() => setMenuOpen(false)}

@@ -1,51 +1,128 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
 import { listAssigned } from '../../services/officer.service';
 import { ComplaintCard } from '../../components/complaint/ComplaintCard';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
-import { PageLoader } from '../../components/common/Spinner';
-import { ClipboardIcon, AlertIcon, ClockIcon } from '../../components/common/Icons';
+import { PageHeader, QueryBoundary, PageSkeleton, fmtRemaining, fmtDate } from '../../components/ui/kit';
+import { PriorityBadge, StatusBadge, SlaBadge, CategoryBadge } from '../../components/common/Badge';
+import { ClipboardIcon, AlertIcon, ClockIcon, ShieldIcon, RefreshIcon } from '../../components/common/Icons';
 import type { Complaint } from '../../utils/types';
 
+type Filter = 'all' | 'urgent' | 'at-risk' | 'review';
+const CLOSED = ['RESOLVED', 'REJECTED'];
+const remainingMs = (c: Complaint) => (c.sla_deadline ? new Date(c.sla_deadline).getTime() - Date.now() : Number.POSITIVE_INFINITY);
+
 export default function OfficerDashboard() {
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const q = useQuery({ queryKey: ['officer-queue'], queryFn: () => listAssigned({ limit: 100 }), refetchInterval: 60_000 });
+  const [filter, setFilter] = useState<Filter>('all');
 
-  useEffect(() => {
-    listAssigned({ limit: 100 })
-      .then((res) => setComplaints(res.rows))
-      .finally(() => setLoading(false));
-  }, []);
+  const open = useMemo(
+    () => (q.data?.rows ?? []).filter((c) => !CLOSED.includes(c.status)).sort((a, b) => b.priority_score - a.priority_score || remainingMs(a) - remainingMs(b)),
+    [q.data]
+  );
+  const urgent = open.filter((c) => c.priority_level === 'CRITICAL' || c.priority_level === 'HIGH');
+  const atRisk = open.filter((c) => c.sla_status === 'APPROACHING' || c.sla_status === 'BREACHED');
+  const review = open.filter((c) => c.review_required);
+  const visible = filter === 'urgent' ? urgent : filter === 'at-risk' ? atRisk : filter === 'review' ? review : open;
+  const next = open[0];
 
-  const mine = complaints.filter((c) => !['RESOLVED', 'REJECTED'].includes(c.status));
-  const critical = mine.filter((c) => c.priority_level === 'CRITICAL');
-  const breached = mine.filter((c) => c.sla_status === 'BREACHED');
-
-  const sorted = [...mine].sort((a, b) => b.priority_score - a.priority_score);
+  const chip = (id: Filter, label: string, n: number) => (
+    <button
+      key={id}
+      aria-pressed={filter === id}
+      onClick={() => setFilter(id)}
+      className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${filter === id ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+    >
+      {label} <span className="ml-1 text-slate-400">{n}</span>
+    </button>
+  );
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="text-xl font-semibold text-slate-900">Your Department's Queue</h1>
-      <p className="mt-1 text-sm text-slate-500">Complaints routed to your department, sorted by priority.</p>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <PageHeader
+        title={`Work queue${user ? ` · ${user.name.split(' ')[0]}` : ''}`}
+        description="Complaints routed to your department, most urgent first."
+        actions={<button className="btn-secondary !py-1.5 text-xs" onClick={() => q.refetch()} disabled={q.isFetching}><RefreshIcon size={14} className={q.isFetching ? 'animate-spin' : ''} /> Refresh</button>}
+      />
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
-        <StatCard label="Open" value={mine.length} icon={<ClipboardIcon size={16} />} />
-        <StatCard label="Critical" value={critical.length} icon={<AlertIcon size={16} />} tone="critical" />
-        <StatCard label="SLA Breached" value={breached.length} icon={<ClockIcon size={16} />} tone="warning" />
-      </div>
+      <div className="mt-5">
+        <QueryBoundary query={q} skeleton={<PageSkeleton />}>
+          {() => (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StatCard label="Open" value={open.length} icon={<ClipboardIcon size={16} />} />
+                <StatCard label="Critical / high" value={urgent.length} icon={<AlertIcon size={16} />} tone={urgent.length ? 'critical' : 'default'} />
+                <StatCard label="SLA at risk" value={atRisk.length} icon={<ClockIcon size={16} />} tone={atRisk.length ? 'warning' : 'default'} />
+                <StatCard label="Needs review" value={review.length} icon={<ShieldIcon size={16} />} tone={review.length ? 'warning' : 'default'} />
+              </div>
 
-      <div className="mt-6">
-        {loading ? (
-          <PageLoader />
-        ) : sorted.length === 0 ? (
-          <EmptyState title="Nothing assigned yet" description="New complaints for your department will appear here." />
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {sorted.map((c) => (
-              <ComplaintCard key={c.id} complaint={c} />
-            ))}
-          </div>
-        )}
+              {next && (
+                <Link to={`/complaints/${next.id}`} className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4 hover:bg-brand-100/60">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Next up</p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{next.ai_title || next.description}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{next.complaint_number}{next.address ? ` · ${next.address}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <PriorityBadge level={next.priority_level} />
+                    <span className={`text-xs font-medium ${remainingMs(next) < 0 ? 'text-red-700' : 'text-slate-600'}`}>{fmtRemaining(Number.isFinite(remainingMs(next)) ? remainingMs(next) : null)}</span>
+                    <span className="text-sm font-medium text-brand-700 group-hover:underline">Open →</span>
+                  </div>
+                </Link>
+              )}
+
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter queue">
+                {chip('all', 'All open', open.length)}
+                {chip('urgent', 'Critical & high', urgent.length)}
+                {chip('at-risk', 'SLA at risk', atRisk.length)}
+                {chip('review', 'Needs review', review.length)}
+              </div>
+
+              {visible.length === 0 ? (
+                <EmptyState title={open.length === 0 ? 'Nothing assigned yet' : 'Nothing in this view'} description={open.length === 0 ? 'New complaints for your department will appear here.' : 'Try another filter.'} />
+              ) : (
+                <>
+                  {/* Desktop table */}
+                  <div className="card hidden overflow-x-auto p-0 md:block">
+                    <table className="w-full text-left text-sm">
+                      <caption className="sr-only">Department work queue</caption>
+                      <thead className="border-b border-slate-100 bg-slate-50 text-xs text-slate-500">
+                        <tr>{['Complaint', 'Category', 'Priority', 'Status', 'SLA', 'Time', 'Reported'].map((h) => <th key={h} scope="col" className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {visible.map((c) => {
+                          const rem = remainingMs(c);
+                          return (
+                            <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50">
+                              <td className="max-w-xs px-4 py-3">
+                                <Link to={`/complaints/${c.id}`} className="font-mono text-xs font-medium text-brand-600 hover:underline">{c.complaint_number}</Link>
+                                <p className="mt-0.5 truncate text-xs text-slate-500">{c.ai_title || c.description}</p>
+                              </td>
+                              <td className="px-4 py-3"><CategoryBadge category={c.category} /></td>
+                              <td className="px-4 py-3"><PriorityBadge level={c.priority_level} /></td>
+                              <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                              <td className="px-4 py-3"><SlaBadge status={c.sla_status} /></td>
+                              <td className={`px-4 py-3 text-xs font-medium ${rem < 0 ? 'text-red-700' : 'text-slate-600'}`}>{Number.isFinite(rem) ? fmtRemaining(rem) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(c.created_at)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Mobile cards */}
+                  <div className="grid grid-cols-1 gap-3 md:hidden">
+                    {visible.map((c) => <ComplaintCard key={c.id} complaint={c} variant="staff" />)}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </QueryBoundary>
       </div>
     </div>
   );

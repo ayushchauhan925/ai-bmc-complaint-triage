@@ -160,7 +160,7 @@ export default function AdminIncidentDetails() {
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {complaints.map((c) => (
           <div key={c.id} className="relative">
-            <ComplaintCard complaint={c} />
+            <ComplaintCard complaint={c} variant="staff" />
             <button
               disabled={busy}
               onClick={() => removeComplaint(c.id)}
