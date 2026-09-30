@@ -47,7 +47,7 @@ async function resolvePolicy(priorityLevel, category) {
 }
 
 async function listPolicies() {
-  const [rows] = await pool.query('SELECT * FROM sla_policies ORDER BY FIELD(priority_level, "CRITICAL","HIGH","MEDIUM","LOW"), category_key');
+  const [rows] = await pool.query(`SELECT * FROM sla_policies ORDER BY FIELD(priority_level, 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'), category_key`);
   return rows;
 }
 
