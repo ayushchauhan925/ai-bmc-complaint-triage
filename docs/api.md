@@ -58,6 +58,14 @@ Response envelope: `{ "success": true, "data": {...} }` or `{ "success": false, 
 | GET | `/admin/map-data` | ADMIN | Filtered marker points for the map |
 | GET | `/admin/analytics` | ADMIN | Full analytics page data |
 | GET | `/admin/departments` / `/wards` / `/officers` | ADMIN | Reference data |
+| GET | `/admin/departments/overview` | ADMIN | query: `search, active`. Departments with codes, primary/secondary categories, officer and complaint counts |
+| PATCH | `/admin/departments/:id` | ADMIN | `description?, contact_email?, contact_phone?, is_active?, reassign_to_department_id?`. Deactivating with open complaints needs a reassignment target (409 otherwise); the fallback department cannot be deactivated |
+| GET | `/admin/officers/overview` | ADMIN | query: `search, department_id, status`. Officer, department, ward, active/critical assignments, SLA breaches |
+| POST | `/admin/officers` | ADMIN | `name, email, password, department_id, ward_id?` (department must be active) |
+| PATCH | `/admin/officers/:id` | ADMIN | `name?, department_id?, ward_id?, is_active?, release_assignments?` (409 with `openAssignments` if open work would be orphaned) |
+| GET | `/admin/complaints/:id/recommend-officer` | ADMIN | Ward-aware ranking of active officers in the complaint's department. Recommendation only |
+
+> Demo catalog, not official BMC data - see the README section "Department catalog, routing & officer assignment".
 | GET | `/admin/intelligence` | ADMIN | **Civic Intelligence Center** (Section 10): summary, department/ward stats, hotspots, recent incidents, latest situation report (if <24h old), and triggers the SLA escalation check |
 | GET | `/admin/hotspots` | ADMIN | Hotspot clusters only |
 | POST | `/admin/ai-search` | ADMIN | `query` → AI-proposed filter, sanitized against an allowlist, executed, logged to `ai_admin_queries` |

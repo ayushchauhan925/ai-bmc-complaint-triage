@@ -21,6 +21,14 @@ const CATEGORIES = [
   'TREE_HAZARD',
   'FLOODING',
   'ILLEGAL_DUMPING',
+  'BUILDING_COLLAPSE',
+  'DANGEROUS_BUILDING',
+  'STRAY_ANIMAL',
+  'PARK_DAMAGE',
+  'DAMAGED_PUBLIC_INFRASTRUCTURE',
+  'POLLUTION',
+  'MAJOR_FIRE',
+  'NATURAL_DISASTER',
   'OTHER',
 ];
 
@@ -46,6 +54,14 @@ const CATEGORY_BASE_SEVERITY = {
   TREE_HAZARD: 'CRITICAL',
   FLOODING: 'CRITICAL',
   ILLEGAL_DUMPING: 'MEDIUM',
+  BUILDING_COLLAPSE: 'CRITICAL',
+  DANGEROUS_BUILDING: 'HIGH',
+  STRAY_ANIMAL: 'MEDIUM',
+  PARK_DAMAGE: 'LOW',
+  DAMAGED_PUBLIC_INFRASTRUCTURE: 'MEDIUM',
+  POLLUTION: 'MEDIUM',
+  MAJOR_FIRE: 'CRITICAL',
+  NATURAL_DISASTER: 'CRITICAL',
   OTHER: 'LOW',
 };
 
@@ -56,57 +72,21 @@ const BASE_SEVERITY_SCORE = {
   LOW: 10,
 };
 
-// Department codes. Actual department rows live in MySQL (`departments` table, seeded from
-// this list) so admin can rename/describe them without code changes; routing keys stay fixed.
-const DEPARTMENT_CODES = {
-  ROADS: 'ROADS',
-  SOLID_WASTE: 'SOLID_WASTE',
-  WATER: 'WATER',
-  DRAINAGE: 'DRAINAGE',
-  ELECTRICAL: 'ELECTRICAL',
-  TRAFFIC: 'TRAFFIC',
-  GARDENS: 'GARDENS',
-  SANITATION: 'SANITATION',
-  ENCROACHMENT: 'ENCROACHMENT',
-  GENERAL: 'GENERAL',
-};
+// Departments, their categories and category -> department routing live in ONE place:
+// utils/departmentCatalog.js (a configurable PROJECT DEMO catalog, not official BMC data). The rows
+// themselves live in MySQL (departments table) and are created/synced from the catalog at startup
+// (services/department/catalog.service.js), so names/contacts/active flags can be managed by admins.
+const departmentCatalog = require('./departmentCatalog');
 
-const DEPARTMENTS_SEED = [
-  { code: 'ROADS', name: 'Roads Department', description: 'Road surface, potholes, footpaths' },
-  { code: 'SOLID_WASTE', name: 'Solid Waste Management', description: 'Garbage collection and disposal' },
-  { code: 'WATER', name: 'Water Supply Department', description: 'Water supply and leakage' },
-  { code: 'DRAINAGE', name: 'Drainage & Sewerage', description: 'Storm drains and sewerage' },
-  { code: 'ELECTRICAL', name: 'Electrical Department', description: 'Streetlights and public lighting' },
-  { code: 'TRAFFIC', name: 'Traffic Department', description: 'Traffic signals and road signage' },
-  { code: 'GARDENS', name: 'Gardens & Tree Department', description: 'Trees and green spaces' },
-  { code: 'SANITATION', name: 'Public Health & Sanitation', description: 'Public toilets, sanitation, dead animals' },
-  { code: 'ENCROACHMENT', name: 'Encroachment Removal', description: 'Illegal encroachment on public land' },
-  { code: 'GENERAL', name: 'General Administration', description: 'Uncategorized / miscellaneous complaints' },
-];
+const DEPARTMENT_CODES = departmentCatalog.DEPARTMENT_CODES;
+const DEPARTMENTS_SEED = departmentCatalog.DEPARTMENT_CATALOG.map(({ code, name, description }) => ({ code, name, description }));
+// Includes alias codes (e.g. BLOCKED_DRAIN) as well as the canonical categories.
+const CATEGORY_TO_DEPARTMENT = departmentCatalog.CATEGORY_TO_DEPARTMENT;
 
-// Deterministic category -> department routing (Section 10). AI never decides this.
-const CATEGORY_TO_DEPARTMENT = {
-  POTHOLE: DEPARTMENT_CODES.ROADS,
-  ROAD_DAMAGE: DEPARTMENT_CODES.ROADS,
-  FOOTPATH_DAMAGE: DEPARTMENT_CODES.ROADS,
-  ROAD_SIGNAGE: DEPARTMENT_CODES.TRAFFIC,
-  GARBAGE: DEPARTMENT_CODES.SOLID_WASTE,
-  WASTE_COLLECTION: DEPARTMENT_CODES.SOLID_WASTE,
-  ILLEGAL_DUMPING: DEPARTMENT_CODES.SOLID_WASTE,
-  WATER_LEAKAGE: DEPARTMENT_CODES.WATER,
-  WATER_SUPPLY: DEPARTMENT_CODES.WATER,
-  DRAINAGE: DEPARTMENT_CODES.DRAINAGE,
-  SEWERAGE: DEPARTMENT_CODES.DRAINAGE,
-  FLOODING: DEPARTMENT_CODES.DRAINAGE,
-  STREETLIGHT: DEPARTMENT_CODES.ELECTRICAL,
-  TRAFFIC_SIGNAL: DEPARTMENT_CODES.TRAFFIC,
-  ENCROACHMENT: DEPARTMENT_CODES.ENCROACHMENT,
-  PUBLIC_TOILET: DEPARTMENT_CODES.SANITATION,
-  SANITATION: DEPARTMENT_CODES.SANITATION,
-  DEAD_ANIMAL: DEPARTMENT_CODES.SANITATION,
-  TREE_HAZARD: DEPARTMENT_CODES.GARDENS,
-  OTHER: DEPARTMENT_CODES.GENERAL,
-};
+const catalogProblems = departmentCatalog.validateCatalog(CATEGORIES);
+if (catalogProblems.length > 0) {
+  throw new Error(`Invalid department catalog: ${catalogProblems.join('; ')}`);
+}
 
 // Priority scoring weights (Section 9). Configurable in one place.
 const PRIORITY_WEIGHTS = {

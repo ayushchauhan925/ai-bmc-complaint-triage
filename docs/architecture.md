@@ -145,7 +145,9 @@ and its dedicated test suite (`tests/unit/adminSearch.service.test.js`).
 | Engine | File | Decides |
 |---|---|---|
 | Priority | `services/complaint/priority.service.js` | Score 0-100 from base category severity + severity signals + duplicate count + age |
-| Routing | `services/complaint/routing.service.js` | Category → department (one lookup table) |
+| Routing | `services/complaint/routing.service.js` | Category → primary + secondary departments, driven by the single catalog `utils/departmentCatalog.js` (20 demo departments; fallback `GENERAL_CIVIC`) |
+| Officer assignment | `services/complaint/officerAssignment.service.js` | Ward/workload/SLA/proximity ranking of active officers; recommendation only, never LLM-driven |
+| Department admin | `services/department/*` | Catalog sync, activate/deactivate with reassignment, officer management |
 | SLA | `services/complaint/sla.service.js` | Deadline from priority level; ON_TRACK/APPROACHING/BREACHED |
 | SLA escalation | `services/complaint/escalation.service.js` | When to notify officer/admin (once per threshold crossing) |
 | Duplicate detection | `services/duplicate/duplicateDetection.service.js` | Cosine similarity (AI-provided embeddings) + distance + recency, combined with configured weights |

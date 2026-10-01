@@ -53,6 +53,7 @@ development — see the verification notes at the end for exactly what was teste
 
 ## 4. Officer: work the queue (~90s)
 
+1. As admin, open **Departments** (20 demo departments, categories, officer/complaint counts) and **Officers** (department, ward, workload); on a complaint use **Recommend officer** for a ranked, explained shortlist - the final choice is yours.
 1. Sign in as the matching department officer (e.g. `officer.roads@civicconnect.demo`).
 2. On the dashboard, open the newly assigned complaint, click **Accept**, then **Start work**.
 3. Click **Get AI suggestions** under AI Work Assistant — an inspection checklist, evidence

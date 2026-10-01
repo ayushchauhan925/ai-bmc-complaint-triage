@@ -65,6 +65,10 @@ async function login({ email, password }) {
     throw new AppError(`Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}, or reset your password.`, 429);
   }
 
+  if (user.is_active === 0 || user.is_active === false) {
+    throw new AppError('This account has been deactivated. Contact an administrator.', 403);
+  }
+
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     const attempts = (user.failed_login_attempts || 0) + 1;

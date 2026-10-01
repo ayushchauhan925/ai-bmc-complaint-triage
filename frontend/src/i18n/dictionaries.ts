@@ -288,6 +288,14 @@ export const hi: Dict = {
   'category.TREE_HAZARD': 'पेड़ से खतरा',
   'category.FLOODING': 'जलभराव',
   'category.ILLEGAL_DUMPING': 'अवैध कचरा डंपिंग',
+  'category.BUILDING_COLLAPSE': 'इमारत गिरना',
+  'category.DANGEROUS_BUILDING': 'खतरनाक इमारत',
+  'category.STRAY_ANIMAL': 'आवारा पशु',
+  'category.PARK_DAMAGE': 'पार्क क्षति',
+  'category.DAMAGED_PUBLIC_INFRASTRUCTURE': 'क्षतिग्रस्त सार्वजनिक ढाँचा',
+  'category.POLLUTION': 'प्रदूषण',
+  'category.MAJOR_FIRE': 'बड़ी आग',
+  'category.NATURAL_DISASTER': 'प्राकृतिक आपदा',
   'category.OTHER': 'अन्य',
 };
 
@@ -446,6 +454,14 @@ export const mr: Dict = {
   'category.TREE_HAZARD': 'झाडामुळे धोका',
   'category.FLOODING': 'पूरस्थिती',
   'category.ILLEGAL_DUMPING': 'बेकायदेशीर कचरा टाकणे',
+  'category.BUILDING_COLLAPSE': 'इमारत कोसळणे',
+  'category.DANGEROUS_BUILDING': 'धोकादायक इमारत',
+  'category.STRAY_ANIMAL': 'भटके प्राणी',
+  'category.PARK_DAMAGE': 'उद्यानाचे नुकसान',
+  'category.DAMAGED_PUBLIC_INFRASTRUCTURE': 'सार्वजनिक सुविधांचे नुकसान',
+  'category.POLLUTION': 'प्रदूषण',
+  'category.MAJOR_FIRE': 'मोठी आग',
+  'category.NATURAL_DISASTER': 'नैसर्गिक आपत्ती',
   'category.OTHER': 'इतर',
 };
 

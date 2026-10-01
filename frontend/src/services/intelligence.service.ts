@@ -81,6 +81,13 @@ export interface OfficerRecommendation {
   criticalCount: number;
   nearbyAssignments: number;
   avgDistanceMeters: number | null;
+  // Ward-aware ranking (backend adds these; optional so older responses still type-check)
+  rank?: number;
+  wardId?: number | null;
+  wardName?: string | null;
+  wardMatch?: boolean;
+  slaBreaches?: number;
+  reasons?: string[];
 }
 
 export async function recommendOfficer(complaintId: number | string) {

@@ -150,7 +150,8 @@ async function runAnalysisPipeline(complaintId, { force = false } = {}) {
   }
 
   // Routing is deterministic on the (validated) category; "OTHER" -> General Administration.
-  const department = await routingService.routeToDepartment(category);
+  const routing = await routingService.routeWithSecondary(category);
+  const department = routing.primary || routing.secondary[0] || null;
 
   // Embedding + related-complaint detection (degrades to text-only matching without embeddings).
   const embeddingText = `${analysis?.summary || ''} ${complaint.description}`.trim();
@@ -305,7 +306,12 @@ async function runAnalysisPipeline(complaintId, { force = false } = {}) {
     );
   }
   await timeline.recordEvent(complaintId, EVENT_TYPES.DEPARTMENT_ASSIGNED, `Routed to ${department?.name || 'General Administration'}`, {
-    details: { departmentId: department?.id || null, category },
+    details: {
+      departmentId: department?.id || null,
+      category,
+      secondaryDepartments: routing.secondary.map((d) => d.name),
+      usedFallback: routing.usedFallback,
+    },
   });
 
   // Incident grouping: only strong, category-compatible matches join an incident.

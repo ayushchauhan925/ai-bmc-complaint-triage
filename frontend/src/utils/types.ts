@@ -7,6 +7,8 @@ export interface User {
   phone: string | null;
   role: Role;
   department_id: number | null;
+  ward_id?: number | null;
+  is_active?: boolean | number;
   email_verified_at?: string | null;
   created_at: string;
 }
@@ -16,6 +18,7 @@ export interface Department {
   code: string;
   name: string;
   description: string | null;
+  is_active?: boolean | number;
 }
 
 export interface Ward {

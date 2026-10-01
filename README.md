@@ -51,6 +51,7 @@ monitoring.
    - [AI evaluation framework](#617-ai-evaluation-framework)
    - [AI usage & cost monitoring](#618-ai-usage--cost-monitoring)
    - [Observability & background jobs](#619-observability--background-jobs)
+   - [Department catalog, routing & officer assignment](#620-department-catalog-routing--officer-assignment)
 7. [Frontend](#frontend)
 8. [Roles & permissions](#roles--permissions)
 9. [Setup](#setup)
@@ -393,6 +394,69 @@ All OpenAI calls pass through one instrumented client (`config/openai.js`). Each
 
 ---
 
+### 6.20 Department catalog, routing & officer assignment
+
+> **Demo model, not official BMC data.** The 20 departments below are this project's **configurable demo department catalog**. They are *not* a claim of the exact, current official organisational names of the Brihanmumbai Municipal Corporation (BMC), and no authoritative BMC source was used to build them. A deployment that has real departmental data should replace the names/codes (admin edits, or the single catalog file) and document where the data came from.
+
+**Single source of truth:** `backend/src/utils/departmentCatalog.js`. Departments, their stable codes, the complaint categories each handles, primary/secondary routing and the fallback are all derived from it. `utils/constants.js` re-exports the derived maps and **throws at load** if the catalog has a duplicate code, an unroutable AI category, or a missing fallback, so a bad edit cannot ship silently.
+
+#### Catalog
+
+| # | Department | Code | Primary complaint types (routed here first) | Also involved (secondary) |
+|---|---|---|---|---|
+| 1 | Roads & Traffic Infrastructure | `ROADS` | Pothole, Road Damage, Road Collapse, Footpath Damage, Road Signage, Road Markings, Traffic Related Infrastructure | — |
+| 2 | Solid Waste Management | `SOLID_WASTE` | Garbage, Waste Collection, Illegal Dumping, Public Waste, Garbage Accumulation | — |
+| 3 | Water Supply | `WATER` | Water Leakage, Water Supply, Low Water Pressure, Contaminated Water, Water Pipe Damage | — |
+| 4 | Storm Water Drainage | `DRAINAGE` | Drainage, Waterlogging, Flooding, Blocked Drain, Storm Water Issues | — |
+| 5 | Sewerage | `SEWERAGE` | Sewerage, Sewer Blockage, Sewage Overflow, Sewer Pipe Damage | — |
+| 6 | Street Lighting & Electrical Infrastructure | `ELECTRICAL` | Streetlight, Broken Streetlight, Electrical Infrastructure, Dark Street, Exposed Electrical Wiring | — |
+| 7 | Traffic Management / Signals | `TRAFFIC` | Traffic Signal, Signal Malfunction, Traffic Control Device, Road Traffic Infrastructure | — |
+| 8 | Gardens & Tree Management | `GARDENS` | Tree Hazard, Fallen Tree, Tree Trimming, Overgrown Vegetation, Tree Obstruction | — |
+| 9 | Public Health & Sanitation | `PUBLIC_HEALTH` | Sanitation, Public Health, Hygiene Issue, Unsanitary Condition | Public Toilet, Sewerage, Sewage Overflow, Dead Animal |
+| 10 | Encroachment & Unauthorized Occupation | `ENCROACHMENT` | Encroachment, Illegal Occupation, Footpath Encroachment, Road Encroachment | — |
+| 11 | Animal Management | `ANIMAL_MANAGEMENT` | Dead Animal, Stray Animal, Animal Hazard, Animal Related Public Issue | — |
+| 12 | Disaster / Emergency Response | `EMERGENCY_RESPONSE` | Building Collapse, Major Fire, Major Accident, Structural Hazard, Major Public Safety Hazard | Fallen Tree |
+| 13 | Buildings & Structural Safety | `BUILDINGS` | Dangerous Building, Structural Damage, Unsafe Structure, Building Hazard | — |
+| 14 | Public Infrastructure | `PUBLIC_INFRASTRUCTURE` | Damaged Public Infrastructure, Public Facility Damage, Bus Shelter Damage, Public Asset Damage | — |
+| 15 | Parks & Recreation | `PARKS` | Park Damage, Playground Damage, Public Garden Issue, Recreational Facility Damage | — |
+| 16 | Public Toilets & Civic Amenities | `CIVIC_AMENITIES` | Public Toilet, Toilet Maintenance, Civic Amenity Damage | — |
+| 17 | Flood / Emergency Water Management | `FLOOD_MANAGEMENT` | Severe Flooding, Major Waterlogging, Emergency Drainage | Flooding |
+| 18 | Environmental Services | `ENVIRONMENT` | Pollution, Environmental Hazard, Illegal Waste Disposal, Environmental Nuisance | — |
+| 19 | Disaster Management | `DISASTER_MANAGEMENT` | Natural Disaster, Emergency Response | Major Accident, Building Collapse, Major Fire |
+| 20 | General Civic Services | `GENERAL_CIVIC` | Other, Unclassified, General Civic Complaint | — |
+
+Stable, unique codes are the contract — names and descriptions can be edited by an admin, codes cannot. The complaint-type labels above are the *routable codes*: the 28 canonical AI categories plus alias codes (e.g. `ROAD_COLLAPSE`, `BROKEN_STREETLIGHT`) — 84 routable codes in total — so a corrected or imported category still routes. The AI schema only ever emits the 28 canonical categories.
+
+#### Routing rules (deterministic — the LLM never routes)
+
+1. `category → primary department` via the catalog. Where a code is listed under several departments (e.g. `BUILDING_COLLAPSE`, `MAJOR_FIRE`, `MAJOR_ACCIDENT`), the **first-listed department wins** and the others become **secondary**. `PUBLIC_TOILET` is an explicit override → *Public Toilets & Civic Amenities*.
+2. **Secondary departments** (e.g. flooding → Flood Management, sewage overflow / dead animal → Public Health, fallen tree → Emergency Response) are recorded on the complaint's `DEPARTMENT_ASSIGNED` timeline event as "also involved". They are informational; one department owns the complaint.
+3. If the primary department is **inactive or missing**, the first active secondary is used, then **General Civic Services** (`GENERAL_CIVIC`, the fallback). The timeline event records `usedFallback`.
+4. The fallback department can never be deactivated or deleted.
+
+#### Officers → department → ward
+
+Every officer belongs to exactly **one department** (required, must exist and be active) and optionally one **ward** (must exist). Both are chosen from database-backed dropdowns in the UI and validated server-side. The seed creates one officer per department (`officer.<dept_code_lower>@civicconnect.demo`, wards assigned round-robin; the legacy `officer.sanitation@…` and `officer.general@…` accounts now belong to Public Health and General Civic).
+
+#### Smart officer assignment (recommendation only)
+
+`services/complaint/officerAssignment.service.js` → `recommendOfficers({ departmentId, latitude, longitude, wardId })`:
+
+- Candidates are **active officers of that department only** — inactive officers and other departments' officers are never considered.
+- Ranking: **same ward** first, then fewest open assignments, then fewest critical, then fewest SLA breaches, then proximity to the officer's current open work. Every recommendation carries human-readable `reasons`.
+- **It only recommends.** The admin makes the final assignment; the LLM is never involved in choosing an officer. `PATCH /admin/complaints/:id/assign` re-checks server-side that the department is active, the officer is active (409) and belongs to the chosen department (400).
+- Deactivated accounts cannot log in (403) and existing tokens stop working on the next request.
+
+#### Department management (admin → **Departments**, **Officers**)
+
+- **Departments page:** all 20 departments with code, handled categories, active/total officers, open and critical complaints; search (name, code, description, category), Active/Inactive tabs, details dialog (primary + "also involved" categories, contacts), edit description/contact email/phone, CSV export.
+- **Deactivation guard:** deactivating a department that still has open complaints is **refused (409) unless a reassignment target** (an active, different department) is supplied. The move is one transaction: open complaints and open incidents move, their officer is cleared, each complaint gets a timeline event, and the action is audited. With no open complaints it deactivates immediately. Reactivation is a single click.
+- **Officers page:** Officer · Department · Ward · Active assignments · Critical assignments · SLA breaches · Status; department filter, search, add/edit. Moving an officer to another department, or deactivating one who has open assignments, returns 409 with the count unless `release_assignments` is set (assignments are then returned to the department queue).
+
+#### Seeding & migration
+
+`005_departments_officers.sql` adds `departments.{is_active, contact_email, contact_phone, updated_at}`, `users.{ward_id, is_active}`, renames the legacy codes `SANITATION → PUBLIC_HEALTH` and `GENERAL → GENERAL_CIVIC` **in place (ids preserved)**, and refreshes legacy names only where they still equal the old seed value. `ensureDepartmentCatalog()` runs at server start and from `npm run seed`: it is **idempotent** (`INSERT IGNORE` by code, never overwrites an admin's edits). Existing complaints are not rewritten — e.g. old sewerage complaints stay with Drainage until an admin reassigns them.
+
 ## Frontend
 
 Kept the existing stack and design system (Tailwind, Recharts, React-Leaflet, custom icon set) and extended it — a full migration to shadcn/Radix was not justified because the existing component vocabulary is already consistent. **TanStack Query** was added for server state; **`leaflet.heat`** for the heatmap layer. Heavy admin pages are **code-split** (`React.lazy`), so citizens and officers never download charts/maps.
@@ -523,7 +587,7 @@ Demo accounts (password `Password123!`): `admin@civicconnect.demo`, `officer.roa
 
 ## Database & migrations
 
-Three ordered, tracked migrations in `backend/database/migrations/`:
+Ordered, tracked migrations in `backend/database/migrations/`:
 
 | Migration | Contents |
 |---|---|
@@ -531,6 +595,7 @@ Three ordered, tracked migrations in `backend/database/migrations/`:
 | `002_intelligence.sql` | AI enrichment columns, incident events, SLA escalations, reopenings, situation reports, admin-query log |
 | `003_civic_platform.sql` | **Additive only** — see below |
 | `004_auth_push.sql` | Additive: `users.{email_verified_at, failed_login_attempts, locked_until}`, tables `auth_tokens` (hashed one-time tokens) and `push_subscriptions` |
+| `005_departments_officers.sql` | `departments.{is_active, contact_email, contact_phone, updated_at}`, `users.{ward_id, is_active}`, legacy code renames (ids preserved) — see [6.20](#620-department-catalog-routing--officer-assignment) |
 
 **003 adds** tables `audit_logs`, `complaint_events`, `complaint_decisions`, `complaint_duplicates`, `human_reviews`, `sla_policies` (seeded with the four defaults), `escalation_events`, `ai_usage`, `ai_evaluations`, `job_runs`; columns `complaint_images.{phash, blur_score, brightness, width, height}` and `complaints.{sla_hours, review_status, ai_attempts}`; and composite indexes `(status, created_at)`, `(category, created_at)`, `(department_id, status)`, `(sla_status)`, `(review_required, review_status)`, plus an index on `phash`. **No existing data is modified or dropped.**
 
@@ -562,6 +627,8 @@ All routes are under `/api`, JSON, `Authorization: Bearer <jwt>`. Full request/r
 
 **Analytics (admin)** - `GET /analytics/recurring?days&radius` · `GET /analytics/effectiveness?window`
 
+**Departments & officers (admin)** - `GET /admin/departments/overview[?search&active]` · `PATCH /admin/departments/:id` (description, contacts, `is_active`, `reassign_to_department_id`) · `GET /admin/officers/overview[?search&department_id&status]` · `POST /admin/officers` · `PATCH /admin/officers/:id` (`department_id`, `ward_id`, `is_active`, `release_assignments`). `GET /admin/complaints/:id/recommend-officer` is now ward-aware.
+
 **Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
 
 Rate limits: 300 req / 15 min general; 20 / 15 min on login/register; **20 / min on AI-triggering endpoints** (`ai-assist`, `duplicate-check`, AI/semantic search, situation report, evaluations).
@@ -575,17 +642,18 @@ cd backend && npm test          # Jest + Supertest, --runInBand
 cd frontend && npx tsc --noEmit && npm run build
 ```
 
-**178 backend tests, all passing** (61 pre-existing + 117 new), plus **14 frontend unit tests** and **37 browser tests**, including:
+**223 backend tests, all passing**, plus **14 frontend unit tests** and **50 browser tests**, including:
 
 - *Unit:* evidence scoring, decision engine (safety floors, factor reconciliation, review gates, capped AI boosts), AI safety & parser hardening, robust-z anomaly scoring (surge / normal / sparse / robust-to-past-spike / insufficient data), Holt forecasting (unavailable cases, intervals, non-negative, backtest), DBSCAN, text similarity (incl. Devanagari), incident trend/extent, audit sanitisation, SLA snapshots, image sniffing, notification-channel failure isolation.
 - *Integration (real DB, AI mocked):* decision-trace persistence, citizen vs staff timeline visibility, review flows (correct → re-route + SLA + audit, approve, false-positive, department scoping, invalid input), corrected complaints not overwritten, duplicate suggestion → incident link → reject → confirm, **AI outage fallback + retry-job recovery**, prompt-injection review flag, SLA policy edit + audit, **escalation idempotency**, analytics authorisation and honest "insufficient data", filter injection rejection, evaluation storage, observability free of secrets, forged-image upload rejection.
 
+- *Departments & routing:* every canonical category routes; stable unique codes; no duplicate departments; secondary departments on the timeline; inactive/missing primary falls back; idempotent catalog sync that preserves admin edits; invalid department/officer IDs; deactivation guard + reassignment workflow; inactive departments and officers cannot receive assignments; officers must belong to the department; ward-aware, workload-aware recommendations that exclude inactive officers; admin-only access.
 - *Production-parity:* `ansiQuotes.test.js` forces `sql_mode=ANSI_QUOTES` (as on Aiven) on every database connection and calls the admin/analytics endpoints - it exists because a double-quoted SQL literal once passed locally and failed in production.
 - *Security:* lockout, single-use / expiring / hashed reset and verification tokens, identical responses for known and unknown emails, push channel pruning, TLS options, safe error defaults, recurring/effectiveness analytics with constructed data, job advisory locks.
 
 **Frontend unit tests** (`cd frontend && npm test`, Vitest): completeness logic, geo helpers, and translation completeness (every English string exists in Hindi and Marathi; all enums translated; placeholders preserved).
 
-**Browser tests** (`cd frontend && npm run e2e`, Playwright - first time only: `npm run e2e:install`): run against a live frontend + API with a seeded database. They cover login/logout and errors, password toggle, forgot/reset pages, registration validation, language switching, **every admin page loading with no error panel and no console errors**, the SLA tabs, sidebar collapse, complaint detail panels, real **PDF and CSV downloads**, officer queue and field view, the full citizen report flow (quality hint, location, submit), citizen/officer access guards, and mobile checks (drawer, reaching the last menu link, no horizontal overflow). Point them at a deployment with `E2E_BASE_URL=https://your-app.vercel.app npm run e2e` (demo accounts via `E2E_ADMIN` / `E2E_OFFICER` / `E2E_CITIZEN`). To run locally: start the backend with a migrated + seeded database (use `NODE_ENV=test` so the rate limiters do not throttle the suite) and `npm run dev` in `frontend`.
+**Browser tests** (`cd frontend && npm run e2e`, Playwright - first time only: `npm run e2e:install`): run against a live frontend + API with a seeded database. They cover login/logout and errors, password toggle, forgot/reset pages, registration validation, language switching, **every admin page (including Departments and Officers) loading with no error panel and no console errors**, the SLA tabs, department search/details/deactivation guard, officer creation and ward/department display, ranked officer recommendations, sidebar collapse, complaint detail panels, real **PDF and CSV downloads**, officer queue and field view, the full citizen report flow (quality hint, location, submit), citizen/officer access guards, and mobile checks (drawer, reaching the last menu link, no horizontal overflow). Point them at a deployment with `E2E_BASE_URL=https://your-app.vercel.app npm run e2e` (demo accounts via `E2E_ADMIN` / `E2E_OFFICER` / `E2E_CITIZEN`). To run locally: start the backend with a migrated + seeded database (use `NODE_ENV=test` so the rate limiters do not throttle the suite) and `npm run dev` in `frontend`.
 
 Tests need a MySQL database and the seeded demo users. **Run them against a local/throwaway database**, e.g. `DB_HOST=127.0.0.1 DB_NAME=bmc_test npm test` after `npm run migrate && npm run seed`.
 

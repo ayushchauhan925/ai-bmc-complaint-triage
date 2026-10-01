@@ -123,6 +123,7 @@ const recommendOfficer = asyncHandler(async (req, res) => {
     departmentId: complaint.department_id,
     latitude: Number(complaint.latitude),
     longitude: Number(complaint.longitude),
+    wardId: complaint.ward_id ?? null,
   });
   res.status(200).json({ success: true, data: { recommendations } });
 });

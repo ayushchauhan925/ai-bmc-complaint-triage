@@ -3,6 +3,7 @@ const env = require('./config/env');
 const { pool, testConnection } = require('./config/db');
 const logger = require('./utils/logger');
 const scheduler = require('./services/jobs/scheduler');
+const { ensureDepartmentCatalog } = require('./services/department/catalog.service');
 
 async function start() {
   try {
@@ -27,6 +28,14 @@ async function start() {
     }
   }
 
+  // Routing needs every catalog department to exist as a row; this is idempotent and never
+  // overwrites an admin's edits, so it is safe on every start (not just after seeding).
+  try {
+    await ensureDepartmentCatalog();
+  } catch (err) {
+    logger.error('Could not sync the department catalog.', { error: err.message });
+  }
+
   // Render (and most PaaS hosts) sit behind a load balancer and route to the container
   // over an internal network - binding explicitly to 0.0.0.0 (rather than relying on the
   // platform-specific default) ensures the app is reachable regardless of host.
@@ -39,6 +48,14 @@ async function start() {
     logger.error('Server failed to start.', { error: err.message });
     process.exit(1);
   });
+
+  // Routing needs every catalog department to exist as a row; this is idempotent and never
+  // overwrites an admin's edits, so it is safe on every start (not just after seeding).
+  try {
+    await ensureDepartmentCatalog();
+  } catch (err) {
+    logger.error('Could not sync the department catalog.', { error: err.message });
+  }
 
   // Render sends SIGTERM before restarting/redeploying a service. Without handling it,
   // in-flight requests get dropped and the MySQL pool's sockets are left to time out

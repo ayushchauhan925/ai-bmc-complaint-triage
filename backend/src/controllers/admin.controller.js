@@ -34,11 +34,20 @@ const assign = asyncHandler(async (req, res) => {
   if (!department) {
     throw new AppError('Department not found.', 404);
   }
+  if (!department.is_active) {
+    throw new AppError('That department is inactive. Choose an active department.', 409);
+  }
 
   if (officer_id) {
     const officer = await userModel.findById(officer_id);
     if (!officer || officer.role !== 'OFFICER') {
       throw new AppError('Officer not found.', 404);
+    }
+    if (!officer.is_active) {
+      throw new AppError('That officer is inactive and cannot receive assignments.', 409);
+    }
+    if (officer.department_id !== department.id) {
+      throw new AppError('That officer does not belong to the selected department.', 400);
     }
   }
 

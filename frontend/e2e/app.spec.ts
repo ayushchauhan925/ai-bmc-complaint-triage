@@ -113,6 +113,8 @@ test.describe('admin', () => {
     ['/admin/operations', 'Trends, anomalies & workload'],
     ['/admin/sla', 'SLA & escalations'],
     ['/admin/recurring', 'Recurring problems & resolution impact'],
+    ['/admin/departments', 'Departments'],
+    ['/admin/officers', 'Officer management'],
     ['/admin/analytics', /analytics/i],
     ['/admin/ai', 'AI performance & system health'],
     ['/admin/audit', 'Audit log'],

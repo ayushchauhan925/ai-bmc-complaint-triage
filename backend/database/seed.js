@@ -3,6 +3,14 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/config/db');
 const { DEPARTMENTS_SEED } = require('../src/utils/constants');
+const { ensureDepartmentCatalog } = require('../src/services/department/catalog.service');
+
+// Demo officer accounts created before the catalog keep their original emails, so re-seeding
+// never creates a second officer for the same department.
+const LEGACY_OFFICER_EMAILS = {
+  PUBLIC_HEALTH: 'officer.sanitation@civicconnect.demo',
+  GENERAL_CIVIC: 'officer.general@civicconnect.demo',
+};
 
 const DEMO_WARDS = [
   { ward_code: 'DEMO-A', ward_name: 'Ward A (DEMO)' },
@@ -24,15 +32,8 @@ const CITIZEN_NAMES = [
 ];
 
 async function upsertDepartments() {
-  for (const dept of DEPARTMENTS_SEED) {
-    await pool.query(
-      `INSERT INTO departments (code, name, description)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description)`,
-      [dept.code, dept.name, dept.description]
-    );
-  }
-  console.log(`Seeded ${DEPARTMENTS_SEED.length} departments.`);
+  const { created, total } = await ensureDepartmentCatalog();
+  console.log(`Department catalog: ${total} departments (${created} newly created).`);
 }
 
 async function upsertWards() {
@@ -47,25 +48,31 @@ async function upsertWards() {
   console.log(`Seeded ${DEMO_WARDS.length} demo wards.`);
 }
 
-async function upsertUser({ name, email, phone, role, departmentCode }) {
+async function upsertUser({ name, email, phone, role, departmentCode, wardCode }) {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   let departmentId = null;
   if (departmentCode) {
     const [rows] = await pool.query('SELECT id FROM departments WHERE code = ?', [departmentCode]);
     departmentId = rows[0]?.id ?? null;
   }
-  const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+  let wardId = null;
+  if (wardCode) {
+    const [rows] = await pool.query('SELECT id FROM wards WHERE ward_code = ?', [wardCode]);
+    wardId = rows[0]?.id ?? null;
+  }
+  const [existing] = await pool.query('SELECT id, ward_id FROM users WHERE email = ?', [email]);
   if (existing.length > 0) {
+    // Re-seeding refreshes the demo identity but keeps an admin's ward choice and active flag.
     await pool.query(
-      'UPDATE users SET name = ?, phone = ?, role = ?, department_id = ? WHERE email = ?',
-      [name, phone, role, departmentId, email]
+      'UPDATE users SET name = ?, phone = ?, role = ?, department_id = ?, ward_id = COALESCE(ward_id, ?) WHERE email = ?',
+      [name, phone, role, departmentId, wardId, email]
     );
     return existing[0].id;
   }
   const [result] = await pool.query(
-    `INSERT INTO users (name, email, password_hash, phone, role, department_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, email, passwordHash, phone, role, departmentId]
+    `INSERT INTO users (name, email, password_hash, phone, role, department_id, ward_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [name, email, passwordHash, phone, role, departmentId, wardId]
   );
   return result.insertId;
 }
@@ -79,13 +86,15 @@ async function seedUsers() {
     departmentCode: null,
   });
 
-  for (const dept of DEPARTMENTS_SEED) {
+  for (let i = 0; i < DEPARTMENTS_SEED.length; i += 1) {
+    const dept = DEPARTMENTS_SEED[i];
     await upsertUser({
       name: `${dept.name} Officer`,
-      email: `officer.${dept.code.toLowerCase()}@civicconnect.demo`,
+      email: LEGACY_OFFICER_EMAILS[dept.code] || `officer.${dept.code.toLowerCase()}@civicconnect.demo`,
       phone: '9800000001',
       role: 'OFFICER',
       departmentCode: dept.code,
+      wardCode: DEMO_WARDS[i % DEMO_WARDS.length].ward_code,
     });
   }
 

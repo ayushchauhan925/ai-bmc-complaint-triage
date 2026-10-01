@@ -1,6 +1,6 @@
 const { pool } = require('../config/db');
 
-const PUBLIC_FIELDS = 'id, name, email, phone, role, department_id, email_verified_at, created_at';
+const PUBLIC_FIELDS = 'id, name, email, phone, role, department_id, ward_id, is_active, email_verified_at, created_at';
 
 async function findByEmail(email) {
   const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
@@ -12,11 +12,11 @@ async function findById(id) {
   return rows[0] || null;
 }
 
-async function create({ name, email, passwordHash, phone, role, departmentId }) {
+async function create({ name, email, passwordHash, phone, role, departmentId, wardId }) {
   const [result] = await pool.query(
-    `INSERT INTO users (name, email, password_hash, phone, role, department_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, email, passwordHash, phone || null, role, departmentId || null]
+    `INSERT INTO users (name, email, password_hash, phone, role, department_id, ward_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [name, email, passwordHash, phone || null, role, departmentId || null, wardId || null]
   );
   return findById(result.insertId);
 }

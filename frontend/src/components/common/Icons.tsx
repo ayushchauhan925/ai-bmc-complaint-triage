@@ -54,6 +54,9 @@ export const BoltIcon = ({ size, className }: IconProps) => (
 export const InboxIcon = ({ size, className }: IconProps) => (
   <svg {...base(size)} className={className}><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" /></svg>
 );
+export const BuildingIcon = ({ size, className }: IconProps) => (
+  <svg {...base(size)} className={className}><rect x="4" y="2" width="16" height="20" rx="1" /><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01" /></svg>
+);
 export const ShieldIcon = ({ size, className }: IconProps) => (
   <svg {...base(size)} className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>
 );

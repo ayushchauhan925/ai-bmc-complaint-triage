@@ -41,7 +41,8 @@ export function AdminActions({
     adminService.listOfficers().then(setOfficers).catch(() => {});
   }, []);
 
-  const availableOfficers = officers.filter((o) => o.department_id === departmentId);
+  // Only ACTIVE officers of the selected department can receive the complaint (the server enforces this too).
+  const availableOfficers = officers.filter((o) => o.department_id === departmentId && o.is_active !== 0 && o.is_active !== false);
   const statusOptions = NEXT_STATUS_OPTIONS[complaint.status] || [];
 
   const runReassign = async () => {
@@ -140,14 +141,17 @@ export function AdminActions({
         <select
           className="input"
           value={departmentId}
-          onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : '')}
+          onChange={(e) => { setDepartmentId(e.target.value ? Number(e.target.value) : ''); setOfficerId(''); setRecommendations(null); }}
         >
           <option value="">Select department</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
+          {departments.map((d) => {
+            const inactive = d.is_active === 0 || d.is_active === false;
+            return (
+              <option key={d.id} value={d.id} disabled={inactive}>
+                {d.name}{inactive ? ' (inactive)' : ''}
+              </option>
+            );
+          })}
         </select>
       </div>
       <div>
@@ -165,23 +169,33 @@ export function AdminActions({
             </option>
           ))}
         </select>
+        {recommendations && recommendations.length === 0 && (
+          <p className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800">No active officers in this department yet. <a className="font-medium underline" href="/admin/officers">Add an officer</a> or leave the complaint in the department queue.</p>
+        )}
         {recommendations && recommendations.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {recommendations.slice(0, 3).map((r, i) => (
+          <div className="mt-2 space-y-1.5" role="list" aria-label="Recommended officers">
+            <p className="text-[11px] text-slate-500">Ranked by ward match, workload, critical load, SLA breaches and proximity. The final choice is yours.</p>
+            {recommendations.slice(0, 4).map((r, i) => (
               <button
                 key={r.officerId}
                 type="button"
+                role="listitem"
                 onClick={() => setOfficerId(r.officerId)}
-                className="flex w-full items-center justify-between rounded-md border border-slate-100 px-2 py-1.5 text-left text-xs hover:bg-slate-50"
+                aria-pressed={officerId === r.officerId}
+                className={`w-full rounded-md border px-2.5 py-2 text-left text-xs transition-colors ${officerId === r.officerId ? 'border-brand-400 bg-brand-50' : 'border-slate-200 hover:bg-slate-50'}`}
               >
-                <span>
-                  {i === 0 && <span className="mr-1 text-green-600">★</span>}
-                  {r.name}
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-800">
+                    <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600">{r.rank ?? i + 1}</span>
+                    {i === 0 && <span className="mr-1 text-green-600" title="Top recommendation">★</span>}
+                    {r.name}
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    {r.wardMatch && <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-800">Same ward</span>}
+                    {r.wardName && !r.wardMatch && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">{r.wardName}</span>}
+                  </span>
                 </span>
-                <span className="text-slate-400">
-                  {r.workload} active · {r.criticalCount} critical
-                  {r.avgDistanceMeters !== null ? ` · ${Math.round(r.avgDistanceMeters)}m avg` : ''}
-                </span>
+                <span className="mt-0.5 block text-slate-500">{r.reasons && r.reasons.length > 0 ? r.reasons.join(' · ') : `${r.workload} active · ${r.criticalCount} critical`}{r.avgDistanceMeters !== null ? ` · ~${Math.round(r.avgDistanceMeters)} m from their current work` : ''}</span>
               </button>
             ))}
           </div>

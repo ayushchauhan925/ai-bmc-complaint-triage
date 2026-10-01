@@ -139,7 +139,7 @@ async function insertComplaint({ ref, category, latitude, longitude, address, re
   const severitySignals = randomSeveritySignals(category);
   const citizen = randomChoice(ref.citizens);
   const ward = ref.wards.length ? randomChoice(ref.wards) : null;
-  const deptCode = CATEGORY_TO_DEPARTMENT[category] || 'GENERAL';
+  const deptCode = CATEGORY_TO_DEPARTMENT[category] || 'GENERAL_CIVIC';
   const department = ref.departments.find((d) => d.code === deptCode);
   const status = pickStatus();
 
@@ -306,7 +306,7 @@ async function run() {
       });
       complaintIds.push(id);
     }
-    const deptCode = CATEGORY_TO_DEPARTMENT[hotspot.category] || 'GENERAL';
+    const deptCode = CATEGORY_TO_DEPARTMENT[hotspot.category] || 'GENERAL_CIVIC';
     const department = ref.departments.find((d) => d.code === deptCode);
     const incidentId = await createIncidentForGroup(hotspot, complaintIds, department);
     console.log(`  Incident created (id=${incidentId}) grouping ${complaintIds.length} ${hotspot.category} complaints.`);

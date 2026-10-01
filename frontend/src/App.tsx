@@ -29,6 +29,8 @@ const SlaEscalations = lazy(() => import('./pages/admin/SlaEscalations'));
 const AiSystem = lazy(() => import('./pages/admin/AiSystem'));
 const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
 const Recurring = lazy(() => import('./pages/admin/Recurring'));
+const Departments = lazy(() => import('./pages/admin/Departments'));
+const Officers = lazy(() => import('./pages/admin/Officers'));
 import AdminIncidents from './pages/admin/Incidents';
 import AdminIncidentDetails from './pages/admin/IncidentDetails';
 import AdminReviewQueue from './pages/admin/ReviewQueue';
@@ -97,6 +99,8 @@ export default function App() {
         <Route path="/admin/ai" element={<AiSystem />} />
         <Route path="/admin/audit" element={<AuditLog />} />
         <Route path="/admin/recurring" element={<Recurring />} />
+        <Route path="/admin/departments" element={<Departments />} />
+        <Route path="/admin/officers" element={<Officers />} />
       </Route>
 
       <Route

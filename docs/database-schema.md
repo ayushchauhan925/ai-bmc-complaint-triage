@@ -203,6 +203,7 @@ longitude)`; `complaint_images.complaint_id`; `complaint_status_history.complain
 
 ## Seed data
 
+- `005_departments_officers.sql` — `departments.{is_active, contact_email, contact_phone, updated_at}`, `users.{ward_id, is_active}`, legacy code renames (ids preserved). Demo catalog, not official BMC data - see the README section "Department catalog, routing & officer assignment".
 - `npm run seed` — departments, demo wards (`(DEMO)` labeled), 1 admin, 1 officer per
   department, 15 citizens. All demo accounts share the password `Password123!`.
 - `npm run seed:complaints` — ~60 synthetic complaints across every category, several

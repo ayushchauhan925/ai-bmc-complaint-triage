@@ -35,7 +35,7 @@ const asList = (v) => (Array.isArray(v) ? v : [v]);
 
 function runRouting() {
   return dataset.routing.map((c) => {
-    const actual = CATEGORY_TO_DEPARTMENT[c.category] || DEPARTMENT_CODES.GENERAL;
+    const actual = CATEGORY_TO_DEPARTMENT[c.category] || DEPARTMENT_CODES.GENERAL_CIVIC;
     return { task: 'routing', caseId: c.id, expected: c.expected, actual, agreed: actual === c.expected, confidence: null };
   });
 }

@@ -25,6 +25,10 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
     throw new AppError('Account no longer exists.', 401);
   }
 
+  if (user.is_active === 0 || user.is_active === false) {
+    throw new AppError('This account has been deactivated. Contact an administrator.', 403);
+  }
+
   req.user = user;
   next();
 });
