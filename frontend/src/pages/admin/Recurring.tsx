@@ -1,16 +1,67 @@
 import React, { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine } from 'recharts';
 import * as platform from '../../services/platform.service';
 import { PageHeader, QueryBoundary, Tabs, PageSkeleton, InsufficientData, fmtDate } from '../../components/ui/kit';
 import { CsvButton } from '../../components/ui/CsvButton';
-import { EmptyState } from '../../components/common/EmptyState';
+import { Badge } from '../../components/common/Badge';
+import { DataTable, RowActions, useClientTable, formatNumber, type Column } from '../../components/table';
+import { DateCell } from '../../components/table/Cells';
 import { CHART_GRID, CHART_AXIS_TEXT } from '../../utils/chartColors';
 import { formatCategory } from '../../utils/constants';
 
 type Tab = 'recurring' | 'impact';
 const AXIS = { fontSize: 11, fill: CHART_AXIS_TEXT };
+
+type Problem = Awaited<ReturnType<typeof platform.recurring>>['problems'][number];
+type Impact = Awaited<ReturnType<typeof platform.effectiveness>>['results'][number];
+
+function RecurringTable({ problems }: { problems: Problem[] }) {
+  const table = useClientTable(problems, {
+    problem: (p) => p.category, reports: (p) => p.reports, incidents: (p) => p.incidents, fixes: (p) => p.interventions,
+    back: (p) => p.recurredAfterResolution, open: (p) => p.openNow, status: (p) => (p.status === 'ACTIVE' ? 0 : 1),
+  });
+  const columns: Column<Problem>[] = [
+    { id: 'problem', header: 'Problem', sortKey: 'problem', locked: true, cell: (p) => (<><p className="font-medium text-slate-900">{formatCategory(p.category)}</p><p className="text-xs text-slate-500">{p.landmark || `${p.location.latitude.toFixed(4)}, ${p.location.longitude.toFixed(4)}`} · ~{p.location.radiusMeters} m</p><p className="text-[11px] text-slate-400">{fmtDate(p.firstReportedAt)} → {fmtDate(p.latestReportedAt)}</p></>) },
+    { id: 'reports', header: 'Reports', sortKey: 'reports', firstSort: 'desc', width: 'w-24', align: 'right', cell: (p) => <span className="font-semibold">{formatNumber(p.reports)}</span> },
+    { id: 'incidents', header: 'Incidents', sortKey: 'incidents', firstSort: 'desc', hideBelow: 'md', width: 'w-24', align: 'right', cell: (p) => formatNumber(p.incidents) },
+    { id: 'fixes', header: 'Fixes', hint: 'Times the problem was resolved', sortKey: 'fixes', firstSort: 'desc', hideBelow: 'md', width: 'w-20', align: 'right', cell: (p) => formatNumber(p.interventions) },
+    { id: 'back', header: 'Back after fix', hint: 'Reported again after being resolved', sortKey: 'back', firstSort: 'desc', width: 'w-36', align: 'right', cell: (p) => <span className="font-semibold text-amber-700">{formatNumber(p.recurredAfterResolution)}{p.reopenings > 0 && <span className="ml-1 text-[11px] font-normal text-slate-400">({p.reopenings} reopened)</span>}</span> },
+    { id: 'open', header: 'Open now', sortKey: 'open', firstSort: 'desc', hideBelow: 'lg', width: 'w-24', align: 'right', cell: (p) => formatNumber(p.openNow) },
+    { id: 'status', header: 'Status', sortKey: 'status', width: 'w-24', cell: (p) => <Badge className={p.status === 'ACTIVE' ? 'border-orange-200 bg-orange-100 text-orange-800' : undefined}>{p.status === 'ACTIVE' ? 'Active' : 'Quiet'}</Badge> },
+    { id: 'actions', header: '', width: 'w-24', align: 'right', locked: true, cell: (p) => <RowActions label={formatCategory(p.category)} primary={{ label: 'Map', to: `/admin/map?focus=${p.location.latitude},${p.location.longitude}&category=${p.category}` }} /> },
+  ];
+  return (
+    <DataTable<Problem>
+      caption="Recurring problems"
+      columns={columns}
+      rows={table.rows}
+      rowKey={(p) => p.id}
+      rowClassName={(p) => (p.status === 'ACTIVE' ? 'row-HIGH' : 'row-LOW')}
+      emptyTitle="No recurring problems found"
+      emptyDescription="Nothing has been resolved and then reported again at the same place in this period - or there is not enough history yet."
+      sort={table.sort}
+      onSortChange={table.setSort}
+      pagination={{ ...table.pagination, noun: 'problems' }}
+    />
+  );
+}
+
+function ImpactTable({ results }: { results: Impact[] }) {
+  const table = useClientTable(results, {
+    location: (r) => r.category, fixed: (r) => new Date(r.resolvedAt.replace(' ', 'T')).getTime(), before: (r) => r.before, after: (r) => r.after, change: (r) => r.changePct,
+  });
+  const columns: Column<Impact>[] = [
+    { id: 'location', header: 'Location', sortKey: 'location', locked: true, cell: (r) => (<><p className="font-medium text-slate-900">{formatCategory(r.category)}</p><p className="text-xs text-slate-500">{r.location.latitude.toFixed(4)}, {r.location.longitude.toFixed(4)} · {r.resolvedComplaints} resolved</p></>) },
+    { id: 'fixed', header: 'Fixed on', sortKey: 'fixed', firstSort: 'desc', hideBelow: 'md', width: 'w-40', cell: (r) => <DateCell value={r.resolvedAt} /> },
+    { id: 'before', header: 'Before', sortKey: 'before', width: 'w-20', align: 'right', cell: (r) => formatNumber(r.before) },
+    { id: 'after', header: 'After', sortKey: 'after', width: 'w-20', align: 'right', cell: (r) => formatNumber(r.after) },
+    { id: 'change', header: 'Observed change', hint: 'Complaints after the fix versus before; negative is better', sortKey: 'change', width: 'w-40', align: 'right', cell: (r) => <span className={`font-semibold ${r.changePct < 0 ? 'text-green-700' : r.changePct > 0 ? 'text-orange-700' : 'text-slate-600'}`}>{r.changePct > 0 ? '▲ +' : r.changePct < 0 ? '▼ ' : '= '}{r.changePct}%</span> },
+    { id: 'actions', header: '', width: 'w-24', align: 'right', locked: true, cell: (r) => <RowActions label={formatCategory(r.category)} primary={{ label: 'Map', to: `/admin/map?focus=${r.location.latitude},${r.location.longitude}&category=${r.category}` }} /> },
+  ];
+  return <DataTable<Impact> caption="Before and after comparison per location" columns={columns} rows={table.rows} rowKey={(r) => r.id} emptyTitle="No locations compared" sort={table.sort} onSortChange={table.setSort} pagination={{ ...table.pagination, noun: 'locations' }} />;
+}
 
 function RecurringTab() {
   const [days, setDays] = useState(180);
@@ -25,34 +76,7 @@ function RecurringTab() {
         </div>
       </div>
       <QueryBoundary query={q} skeleton={<PageSkeleton />}>
-        {({ problems }) => problems.length === 0 ? (
-          <EmptyState title="No recurring problems found" description="Nothing has been resolved and then reported again at the same place in this period - or there is not enough history yet." />
-        ) : (
-          <div className="card overflow-x-auto p-0">
-            <table className="data-table">
-              <caption className="sr-only">Recurring problems</caption>
-              <thead><tr>{['Problem', 'Reports', 'Incidents', 'Fixes', 'Back after fix', 'Open now', 'Status', ''].map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
-              <tbody>
-                {problems.map((p) => (
-                  <tr key={p.id} className={p.status === 'ACTIVE' ? 'row-HIGH' : 'row-LOW'}>
-                    <td>
-                      <p className="font-medium text-slate-900">{formatCategory(p.category)}</p>
-                      <p className="text-xs text-slate-500">{p.landmark || `${p.location.latitude.toFixed(4)}, ${p.location.longitude.toFixed(4)}`} · ~{p.location.radiusMeters} m</p>
-                      <p className="text-[11px] text-slate-400">{fmtDate(p.firstReportedAt)} → {fmtDate(p.latestReportedAt)}</p>
-                    </td>
-                    <td className="font-semibold">{p.reports}</td>
-                    <td>{p.incidents}</td>
-                    <td>{p.interventions}</td>
-                    <td className="font-semibold text-amber-700">{p.recurredAfterResolution}{p.reopenings > 0 && <span className="ml-1 text-[11px] font-normal text-slate-400">({p.reopenings} reopened)</span>}</td>
-                    <td>{p.openNow}</td>
-                    <td><span className={`badge border ${p.status === 'ACTIVE' ? 'border-orange-200 bg-orange-100 text-orange-800' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>{p.status === 'ACTIVE' ? 'Active' : 'Quiet'}</span></td>
-                    <td><Link className="text-xs font-medium text-brand-600 hover:underline" to={`/admin/map?focus=${p.location.latitude},${p.location.longitude}&category=${p.category}`}>Map →</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {({ problems }) => <RecurringTable problems={problems} />}
       </QueryBoundary>
     </div>
   );
@@ -100,24 +124,7 @@ function ImpactTab() {
                   </div>
                 </div>
 
-                <div className="card overflow-x-auto p-0">
-                  <table className="data-table">
-                    <caption className="sr-only">Before and after comparison per location</caption>
-                    <thead><tr>{['Location', 'Fixed on', 'Before', 'After', 'Observed change', ''].map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
-                    <tbody>
-                      {d.results.map((r) => (
-                        <tr key={r.id}>
-                          <td><p className="font-medium text-slate-900">{formatCategory(r.category)}</p><p className="text-xs text-slate-500">{r.location.latitude.toFixed(4)}, {r.location.longitude.toFixed(4)} · {r.resolvedComplaints} resolved</p></td>
-                          <td>{fmtDate(r.resolvedAt)}</td>
-                          <td>{r.before}</td>
-                          <td>{r.after}</td>
-                          <td className={`font-semibold ${r.changePct < 0 ? 'text-green-700' : r.changePct > 0 ? 'text-orange-700' : 'text-slate-600'}`}>{r.changePct > 0 ? '▲ +' : r.changePct < 0 ? '▼ ' : '= '}{r.changePct}%</td>
-                          <td><Link className="text-xs font-medium text-brand-600 hover:underline" to={`/admin/map?focus=${r.location.latitude},${r.location.longitude}&category=${r.category}`}>Map →</Link></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ImpactTable results={d.results} />
               </>
             )}
           </>

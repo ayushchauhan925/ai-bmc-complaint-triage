@@ -3,23 +3,16 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as org from '../../services/org.service';
 import { getErrorMessage } from '../../services/api';
-import { PageHeader, QueryBoundary, CardSkeleton, Tabs } from '../../components/ui/kit';
+import { PageHeader, Tabs } from '../../components/ui/kit';
 import { Modal } from '../../components/ui/Modal';
 import { CsvButton } from '../../components/ui/CsvButton';
-import { EmptyState } from '../../components/common/EmptyState';
+import { ActiveBadge } from '../../components/common/Badge';
+import { DataTable, RowActions, SearchInput, useClientTable, type Column } from '../../components/table';
 import { formatCategory } from '../../utils/constants';
 
 type Filter = 'all' | 'active' | 'inactive';
 
 const chipCls = 'rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-600';
-
-function StatusPill({ active }: { active: boolean }) {
-  return (
-    <span className={`badge border ${active ? 'border-green-200 bg-green-100 text-green-800' : 'border-slate-300 bg-slate-100 text-slate-600'}`}>
-      <span aria-hidden="true" className="mr-1">{active ? '●' : '○'}</span>{active ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
 
 export default function Departments() {
   const qc = useQueryClient();
@@ -38,6 +31,50 @@ export default function Departments() {
       .filter((d) => (filter === 'all' ? true : filter === 'active' ? d.isActive : !d.isActive))
       .filter((d) => !s || `${d.name} ${d.code} ${d.description ?? ''} ${d.primaryCategories.join(' ')}`.toLowerCase().includes(s));
   }, [all, search, filter]);
+
+  const table = useClientTable(rows, {
+    name: (d) => d.name, code: (d) => d.code, officers: (d) => d.activeOfficers, open: (d) => d.activeComplaints,
+    critical: (d) => d.criticalComplaints, status: (d) => (d.isActive ? 1 : 0),
+  });
+
+  const columns: Column<org.DepartmentOverview>[] = [
+    {
+      id: 'department', header: 'Department', sortKey: 'name', width: 'min-w-[14rem]', locked: true,
+      cell: (d) => (
+        <>
+          <p className="font-medium text-slate-900">{d.name}</p>
+          <p className="text-xs text-slate-500"><span className="font-mono">{d.code}</span>{d.isFallback && <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Routing fallback</span>}</p>
+        </>
+      ),
+    },
+    {
+      id: 'handles', header: 'Handles', hint: 'Complaint categories routed here first', width: 'min-w-[16rem]', hideBelow: 'lg',
+      cell: (d) => (
+        <div className="flex flex-wrap gap-1">
+          {d.primaryCategories.slice(0, 4).map((c) => <span key={c} className={chipCls}>{formatCategory(c)}</span>)}
+          {d.primaryCategories.length > 4 && (
+            <button onClick={() => setDetails(d)} className="rounded-md border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-brand-100">+{d.primaryCategories.length - 4} more</button>
+          )}
+        </div>
+      ),
+    },
+    { id: 'officers', header: 'Officers', hint: 'Active / total officers', sortKey: 'officers', firstSort: 'desc', width: 'w-24', align: 'right', cell: (d) => <><Link to={`/admin/officers?department_id=${d.id}`} className="font-medium text-brand-700 hover:underline">{d.activeOfficers}</Link><span className="text-xs text-slate-400"> / {d.totalOfficers}</span></> },
+    { id: 'open', header: 'Open complaints', sortKey: 'open', firstSort: 'desc', width: 'w-44', align: 'right', cell: (d) => <>{d.activeComplaints}{d.criticalComplaints > 0 && <span className="ml-1.5 rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700">{d.criticalComplaints} critical</span>}</> },
+    { id: 'status', header: 'Status', sortKey: 'status', width: 'w-28', cell: (d) => <ActiveBadge active={d.isActive} /> },
+    {
+      id: 'actions', header: '', width: 'w-36', align: 'right', locked: true,
+      cell: (d) => (
+        <RowActions
+          label={d.name}
+          primary={{ label: 'Details', onClick: () => setDetails(d) }}
+          items={[
+            { label: 'Edit', onClick: () => setEditing(d) },
+            { label: d.isActive ? 'Deactivate' : 'Activate', danger: d.isActive, disabled: d.isFallback && d.isActive, title: d.isFallback ? 'The fallback department cannot be deactivated' : undefined, onClick: () => setToggling(d) },
+          ]}
+        />
+      ),
+    },
+  ];
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['departments-overview'] });
@@ -86,69 +123,43 @@ export default function Departments() {
         ))}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Tabs<Filter>
-            tabs={[{ id: 'all', label: 'All', badge: all.length }, { id: 'active', label: 'Active', badge: totals.active }, { id: 'inactive', label: 'Inactive', badge: all.length - totals.active }]}
-            value={filter}
-            onChange={setFilter}
-          />
-        </div>
-        <input aria-label="Search departments" className="input w-full sm:w-72" placeholder="Search name, code or category…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="mt-5">
+        <Tabs<Filter>
+          tabs={[{ id: 'all', label: 'All', badge: all.length }, { id: 'active', label: 'Active', badge: totals.active }, { id: 'inactive', label: 'Inactive', badge: all.length - totals.active }]}
+          value={filter}
+          onChange={(f) => { setFilter(f); table.resetPage(); }}
+        />
       </div>
 
       <div className="mt-4">
-        <QueryBoundary query={q} skeleton={<CardSkeleton lines={6} />}>
-          {() =>
-            rows.length === 0 ? (
-              <EmptyState title="No departments match" description="Try a different search or filter." />
-            ) : (
-              <div className="card overflow-x-auto p-0">
-                <table className="data-table">
-                  <caption className="sr-only">Department catalog</caption>
-                  <thead>
-                    <tr>{['Department', 'Handles', 'Officers', 'Open complaints', 'Status', ''].map((h) => <th key={h} scope="col">{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((d) => (
-                      <tr key={d.id}>
-                        <td className="min-w-[14rem]">
-                          <p className="font-medium text-slate-900">{d.name}</p>
-                          <p className="text-xs text-slate-500"><span className="font-mono">{d.code}</span>{d.isFallback && <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Routing fallback</span>}</p>
-                        </td>
-                        <td className="min-w-[16rem]">
-                          <div className="flex flex-wrap gap-1">
-                            {d.primaryCategories.slice(0, 4).map((c) => <span key={c} className={chipCls}>{formatCategory(c)}</span>)}
-                            {d.primaryCategories.length > 4 && (
-                              <button onClick={() => setDetails(d)} className="rounded-md border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-brand-100">+{d.primaryCategories.length - 4} more</button>
-                            )}
-                          </div>
-                        </td>
-                        <td><Link to={`/admin/officers?department_id=${d.id}`} className="font-medium text-brand-700 hover:underline">{d.activeOfficers}</Link><span className="text-xs text-slate-400"> / {d.totalOfficers}</span></td>
-                        <td>{d.activeComplaints}{d.criticalComplaints > 0 && <span className="ml-1.5 rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700">{d.criticalComplaints} critical</span>}</td>
-                        <td><StatusPill active={d.isActive} /></td>
-                        <td>
-                          <div className="flex justify-end gap-1.5">
-                            <button className="btn-secondary !px-2.5 !py-1 text-xs" onClick={() => setDetails(d)}>Details</button>
-                            <button className="btn-secondary !px-2.5 !py-1 text-xs" onClick={() => setEditing(d)}>Edit</button>
-                            <button
-                              className="btn-secondary !px-2.5 !py-1 text-xs"
-                              disabled={d.isFallback && d.isActive}
-                              title={d.isFallback ? 'The fallback department cannot be deactivated' : undefined}
-                              onClick={() => setToggling(d)}
-                            >
-                              {d.isActive ? 'Deactivate' : 'Activate'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          }
-        </QueryBoundary>
+        <DataTable<org.DepartmentOverview>
+          caption="Department catalog"
+          columns={columns}
+          rows={q.data ? table.rows : undefined}
+          rowKey={(d) => d.id}
+          isLoading={q.isLoading}
+          isFetching={q.isFetching}
+          error={q.error}
+          errorTitle="Unable to load departments"
+          onRetry={() => q.refetch()}
+          emptyTitle="No departments yet"
+          filtered={!!search || filter !== 'all'}
+          filteredTitle="No departments match"
+          onClearFilters={() => { setSearch(''); setFilter('all'); table.resetPage(); }}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          toolbar={<SearchInput label="Search departments" value={search} onChange={(v) => { setSearch(v); table.resetPage(); }} placeholder="Search name, code or category…" />}
+          storageKey="admin-departments"
+          columnMenu
+          mobileCard={(d) => (
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-2"><div><p className="font-semibold text-slate-900">{d.name}</p><p className="font-mono text-xs text-slate-500">{d.code}</p></div><ActiveBadge active={d.isActive} /></div>
+              <p className="mt-2 text-xs text-slate-600">{d.activeOfficers}/{d.totalOfficers} officers · {d.activeComplaints} open{d.criticalComplaints > 0 ? ` · ${d.criticalComplaints} critical` : ''}</p>
+              <div className="mt-3 flex gap-2"><button className="btn-secondary flex-1 text-xs" onClick={() => setDetails(d)}>Details</button><button className="btn-secondary flex-1 text-xs" onClick={() => setEditing(d)}>Edit</button></div>
+            </div>
+          )}
+          pagination={{ ...table.pagination, noun: 'departments' }}
+        />
       </div>
 
       <DetailsModal dept={details} onClose={() => setDetails(null)} />
@@ -166,7 +177,7 @@ function DetailsModal({ dept, onClose }: { dept: org.DepartmentOverview | null; 
           <p className="text-slate-600">{dept.description}</p>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div><dt className="text-xs text-slate-500">Code</dt><dd className="font-mono font-medium">{dept.code}</dd></div>
-            <div><dt className="text-xs text-slate-500">Status</dt><dd><StatusPill active={dept.isActive} /></dd></div>
+            <div><dt className="text-xs text-slate-500">Status</dt><dd><ActiveBadge active={dept.isActive} /></dd></div>
             <div><dt className="text-xs text-slate-500">Active officers</dt><dd className="font-medium">{dept.activeOfficers} of {dept.totalOfficers}</dd></div>
             <div><dt className="text-xs text-slate-500">Open complaints</dt><dd className="font-medium">{dept.activeComplaints} ({dept.criticalComplaints} critical)</dd></div>
           </dl>

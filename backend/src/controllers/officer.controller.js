@@ -11,10 +11,12 @@ const logger = require('../utils/logger');
 const { COMPLAINT_STATUS } = require('../utils/constants');
 
 const listAssigned = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status } = req.query;
+  const { page = 1, limit = 20, status, priority_level, search, sort, order } = req.query;
   const filters = { department_id: req.user.department_id };
   if (status) filters.status = status;
-  const result = await complaintModel.list(filters, { page: Number(page), limit: Number(limit) });
+  if (priority_level) filters.priority_level = priority_level;
+  if (search) filters.search = String(search).slice(0, 100);
+  const result = await complaintModel.list(filters, { page: Number(page), limit: Number(limit), sort, order });
   res.status(200).json({ success: true, data: result });
 });
 

@@ -46,7 +46,7 @@ async function record({ actor = null, action, entityType, entityId = null, previ
   }
 }
 
-async function list({ entityType, entityId, action, actorId, dateFrom, dateTo, page = 1, limit = 50 } = {}) {
+async function list({ entityType, entityId, action, actorId, dateFrom, dateTo, search, order, page = 1, limit = 50 } = {}) {
   const clauses = [];
   const params = [];
   if (entityType) { clauses.push('a.entity_type = ?'); params.push(entityType); }
@@ -55,6 +55,11 @@ async function list({ entityType, entityId, action, actorId, dateFrom, dateTo, p
   if (actorId) { clauses.push('a.actor_id = ?'); params.push(Number(actorId)); }
   if (dateFrom) { clauses.push('a.created_at >= ?'); params.push(dateFrom); }
   if (dateTo) { clauses.push('a.created_at <= ?'); params.push(dateTo); }
+  if (search) {
+    // actor name, action or resource type/id
+    clauses.push('(u.name LIKE ? OR a.action LIKE ? OR a.entity_type LIKE ? OR a.entity_id LIKE ?)');
+    params.push('%' + search + '%', '%' + search + '%', '%' + search + '%', '%' + search + '%');
+  }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
   const offset = (Math.max(Number(page) || 1, 1) - 1) * safeLimit;
@@ -62,10 +67,10 @@ async function list({ entityType, entityId, action, actorId, dateFrom, dateTo, p
   const [rows] = await pool.query(
     `SELECT a.*, u.name AS actor_name FROM audit_logs a
      LEFT JOIN users u ON u.id = a.actor_id
-     ${where} ORDER BY a.id DESC LIMIT ? OFFSET ?`,
+     ${where} ORDER BY a.id ${String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC'} LIMIT ? OFFSET ?`,
     [...params, safeLimit, offset]
   );
-  const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM audit_logs a ${where}`, params);
+  const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id ${where}`, params);
   return { rows, total, page: Number(page) || 1, limit: safeLimit };
 }
 

@@ -13,7 +13,7 @@ const timeline = require('../services/complaint/timeline.service');
 const listComplaints = asyncHandler(async (req, res) => {
   const {
     page = 1, limit = 20, status, category, priority_level, department_id, ward_id, search, review_required,
-    sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to,
+    sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to, sort, order,
   } = req.query;
   const filters = { status, category, priority_level, search, sla_status, citizen, date_from, date_to };
   if (incident_id) filters.incident_id = Number(incident_id);
@@ -23,7 +23,7 @@ const listComplaints = asyncHandler(async (req, res) => {
   if (ward_id) filters.ward_id = Number(ward_id);
   if (review_required !== undefined) filters.review_required = review_required === 'true';
 
-  const result = await complaintModel.list(filters, { page: Number(page), limit: Number(limit) });
+  const result = await complaintModel.list(filters, { page: Number(page), limit: Number(limit), sort, order });
   res.status(200).json({ success: true, data: result });
 });
 

@@ -478,6 +478,26 @@ Kept the existing stack and design system (Tailwind, Recharts, React-Leaflet, cu
 | Citizen | `/complaints/:id` | Same page with a **public-safe timeline**, SLA countdown and related-complaint notice; no internal insights |
 | All | — | Existing citizen submit/track/feedback/reopen, officer queue + copilot, Intelligence Center, Analytics, public transparency dashboard |
 
+### Data tables
+
+Every data table in the product is one shared component, `frontend/src/components/table/` (`DataTable`, `Pagination`, `Filters`, `RowActions`, `Popover`, `Cells`, `format.ts`, `hooks.ts`). Pages own their data (TanStack Query) and pass rows + a column list; the table never fetches.
+
+| Capability | Behaviour |
+|---|---|
+| Columns | per-column width, alignment, ellipsis truncation with tooltip, header hint tooltips, responsive hiding (`hideBelow`), column-visibility menu and density (comfortable / compact) remembered per table in `localStorage` |
+| Sorting | click a header: first direction → opposite → back to default; `aria-sort` on the header. **Server-side** for large lists (complaints, officer queue, audit log), client-side only for small bounded lists the API returns whole (departments, officers, incidents, SLA, workload) |
+| Search & filters | debounced search (no request per keystroke), selects, date ranges, removable filter chips with "Clear all", "More filters" for secondary filters |
+| Pagination | "Showing 1–25 of 1,248", page window with ellipses, 25 / 50 / 100 rows; the API clamps `limit` to 100 |
+| Selection | select the current page, per-row, count in a status bar that says "on this page" vs "on other pages", clear selection; the only bulk action offered is **Export selected (CSV)** - no bulk mutations exist in the API, so none are shown |
+| Row actions | one primary button plus an overflow menu (portal-based, never clipped, arrow keys / Escape); the actions column stays sticky on wide tables |
+| States | skeleton rows of the real column count while loading; separate empty states for "no data yet" and "no results match" (with Clear filters); error state with Retry - a failed request is never shown as an empty table |
+| Small screens | card list below `md` where a card makes sense, otherwise horizontal scroll inside a focusable, labelled region (the page itself never overflows) |
+| Consistency | shared `StatusBadge` / `PriorityBadge` / `SlaBadge` / `SeverityBadge` / `ActiveBadge` (always text, never colour alone), one date format (`01 Oct 2026 14:32`, relative for recent items with the exact time in a tooltip), one number format (Indian digit grouping, fixed decimals, "—" for missing values) |
+
+Tables using it: Complaints, Department complaints (officer), Officer queue, Incidents, Departments, Officers, SLA at-risk, Escalations, Audit log, Recurring problems, Resolution impact, Department workload, Expected demand, AI usage, Public dashboard. Not tables, deliberately left as is: the review queue and citizen "My complaints" (card workflows), and the small key/value tables inside forms.
+
+Server support: `GET /admin/complaints` and `GET /officer/complaints` accept `sort` (`created_at, updated_at, priority, status, category, sla_deadline, department, complaint_number`) and `order` (`asc|desc`); the key is looked up in a fixed whitelist, so unknown or hostile values fall back to the default order and never reach SQL. `GET /admin/audit-logs` accepts `search` (actor, action, resource) and `order`.
+
 ### PDF reports
 
 Generated **in the browser** (`jspdf` + `jspdf-autotable`, loaded only when a button is clicked, so they add nothing to the initial bundle) from data the signed-in user can already see - no extra server load and no new permissions. Every report has the Civic Connect header, page numbers, a generation timestamp and a data-scope footer.
@@ -629,7 +649,7 @@ All routes are under `/api`, JSON, `Authorization: Bearer <jwt>`. Full request/r
 
 **Departments & officers (admin)** - `GET /admin/departments/overview[?search&active]` · `PATCH /admin/departments/:id` (description, contacts, `is_active`, `reassign_to_department_id`) · `GET /admin/officers/overview[?search&department_id&status]` · `POST /admin/officers` · `PATCH /admin/officers/:id` (`department_id`, `ward_id`, `is_active`, `release_assignments`). `GET /admin/complaints/:id/recommend-officer` is now ward-aware.
 
-**Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
+**Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to, sort, order` (page size capped at 100); `GET /officer/complaints` accepts `priority_level, search, sort, order`; `GET /admin/audit-logs` accepts `search, order`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
 
 Rate limits: 300 req / 15 min general; 20 / 15 min on login/register; **20 / min on AI-triggering endpoints** (`ai-assist`, `duplicate-check`, AI/semantic search, situation report, evaluations).
 
@@ -642,16 +662,19 @@ cd backend && npm test          # Jest + Supertest, --runInBand
 cd frontend && npx tsc --noEmit && npm run build
 ```
 
-**223 backend tests, all passing**, plus **14 frontend unit tests** and **50 browser tests**, including:
+**240 backend tests, all passing**, plus **22 frontend unit tests** and **68 browser tests**, including:
 
 - *Unit:* evidence scoring, decision engine (safety floors, factor reconciliation, review gates, capped AI boosts), AI safety & parser hardening, robust-z anomaly scoring (surge / normal / sparse / robust-to-past-spike / insufficient data), Holt forecasting (unavailable cases, intervals, non-negative, backtest), DBSCAN, text similarity (incl. Devanagari), incident trend/extent, audit sanitisation, SLA snapshots, image sniffing, notification-channel failure isolation.
 - *Integration (real DB, AI mocked):* decision-trace persistence, citizen vs staff timeline visibility, review flows (correct → re-route + SLA + audit, approve, false-positive, department scoping, invalid input), corrected complaints not overwritten, duplicate suggestion → incident link → reject → confirm, **AI outage fallback + retry-job recovery**, prompt-injection review flag, SLA policy edit + audit, **escalation idempotency**, analytics authorisation and honest "insufficient data", filter injection rejection, evaluation storage, observability free of secrets, forged-image upload rejection.
 
 - *Departments & routing:* every canonical category routes; stable unique codes; no duplicate departments; secondary departments on the timeline; inactive/missing primary falls back; idempotent catalog sync that preserves admin edits; invalid department/officer IDs; deactivation guard + reassignment workflow; inactive departments and officers cannot receive assignments; officers must belong to the department; ward-aware, workload-aware recommendations that exclude inactive officers; admin-only access.
+- *Table API:* sort whitelist (ascending/descending, nulls last, hostile keys fall back, stable paging), page-size cap, officer-queue search/filter/sort scoping, audit search and order, admin-only access.
 - *Production-parity:* `ansiQuotes.test.js` forces `sql_mode=ANSI_QUOTES` (as on Aiven) on every database connection and calls the admin/analytics endpoints - it exists because a double-quoted SQL literal once passed locally and failed in production.
 - *Security:* lockout, single-use / expiring / hashed reset and verification tokens, identical responses for known and unknown emails, push channel pruning, TLS options, safe error defaults, recurring/effectiveness analytics with constructed data, job advisory locks.
 
 **Frontend unit tests** (`cd frontend && npm test`, Vitest): completeness logic, geo helpers, and translation completeness (every English string exists in Hindi and Marathi; all enums translated; placeholders preserved).
+
+**Table tests:** `tables.spec.ts` covers server sorting (request parameters and `aria-sort`), debounced search, filter chips, page size and pagination, selection and export-selected, persisted column visibility, density, keyboard-operable row menus, error + Retry, no page-level overflow, and the phone card layout; Vitest covers the pagination window and the date/number formatters.
 
 **Browser tests** (`cd frontend && npm run e2e`, Playwright - first time only: `npm run e2e:install`): run against a live frontend + API with a seeded database. They cover login/logout and errors, password toggle, forgot/reset pages, registration validation, language switching, **every admin page (including Departments and Officers) loading with no error panel and no console errors**, the SLA tabs, department search/details/deactivation guard, officer creation and ward/department display, ranked officer recommendations, sidebar collapse, complaint detail panels, real **PDF and CSV downloads**, officer queue and field view, the full citizen report flow (quality hint, location, submit), citizen/officer access guards, and mobile checks (drawer, reaching the last menu link, no horizontal overflow). Point them at a deployment with `E2E_BASE_URL=https://your-app.vercel.app npm run e2e` (demo accounts via `E2E_ADMIN` / `E2E_OFFICER` / `E2E_CITIZEN`). To run locally: start the backend with a migrated + seeded database (use `NODE_ENV=test` so the rate limiters do not throttle the suite) and `npm run dev` in `frontend`.
 

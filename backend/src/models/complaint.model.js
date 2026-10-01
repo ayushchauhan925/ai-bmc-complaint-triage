@@ -188,8 +188,30 @@ function buildFilterClause(filters) {
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
-async function list(filters = {}, { page = 1, limit = 20 } = {}) {
+// Sortable columns. The client sends a key; only the fixed SQL fragments below ever reach the query.
+const SORT_COLUMNS = {
+  created_at: 'c.created_at',
+  updated_at: 'c.updated_at',
+  priority: 'c.priority_score',
+  status: 'c.status',
+  category: 'c.category',
+  sla_deadline: 'c.sla_deadline',
+  department: 'd.name',
+  complaint_number: 'c.complaint_number',
+};
+
+function buildOrderBy(sort, order) {
+  const column = SORT_COLUMNS[sort] || SORT_COLUMNS.created_at;
+  const direction = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  // NULL deadlines (resolved / no SLA) always sort last; id breaks ties so paging is stable.
+  const nullsLast = sort === 'sla_deadline' ? `${column} IS NULL, ` : '';
+  return `ORDER BY ${nullsLast}${column} ${direction}, c.id DESC`;
+}
+
+async function list(filters = {}, { page = 1, limit = 20, sort, order } = {}) {
   const { where, params } = buildFilterClause(filters);
+  limit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  page = Math.max(Number(page) || 1, 1);
   const offset = (page - 1) * limit;
 
   const [rows] = await pool.query(
@@ -199,7 +221,7 @@ async function list(filters = {}, { page = 1, limit = 20 } = {}) {
      LEFT JOIN wards w ON w.id = c.ward_id
      LEFT JOIN users u ON u.id = c.user_id
      ${where}
-     ORDER BY c.created_at DESC
+     ${buildOrderBy(sort, order)}
      LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );

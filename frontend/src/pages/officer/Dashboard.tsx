@@ -8,7 +8,9 @@ import { StatCard } from '../../components/dashboard/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { CsvButton } from '../../components/ui/CsvButton';
 import { PageHeader, QueryBoundary, PageSkeleton, fmtRemaining, fmtDate } from '../../components/ui/kit';
-import { PriorityBadge, StatusBadge, SlaBadge, CategoryBadge } from '../../components/common/Badge';
+import { PriorityBadge, StatusBadge, CategoryBadge } from '../../components/common/Badge';
+import { DataTable, RowActions, useClientTable, type Column } from '../../components/table';
+import { ComplaintIdCell, DateCell, SlaCell } from '../../components/table/Cells';
 import { ClipboardIcon, AlertIcon, ClockIcon, ShieldIcon, RefreshIcon } from '../../components/common/Icons';
 import type { Complaint } from '../../utils/types';
 
@@ -31,11 +33,26 @@ export default function OfficerDashboard() {
   const visible = filter === 'urgent' ? urgent : filter === 'at-risk' ? atRisk : filter === 'review' ? review : open;
   const next = open[0];
 
+  const RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+  const table = useClientTable(visible, {
+    complaint: (c) => c.complaint_number, category: (c) => c.category, priority: (c) => RANK[c.priority_level], status: (c) => c.status,
+    sla: (c) => (Number.isFinite(remainingMs(c)) ? remainingMs(c) : null), reported: (c) => new Date(c.created_at.replace(' ', 'T')).getTime(),
+  });
+  const columns: Column<Complaint>[] = [
+    { id: 'complaint', header: 'Complaint', sortKey: 'complaint', locked: true, truncate: true, cell: (c) => (<><ComplaintIdCell id={c.id} number={c.complaint_number} review={c.review_required} /><span className="block max-w-xs truncate text-xs text-slate-500">{c.ai_title || c.description}</span></>) },
+    { id: 'category', header: 'Category', sortKey: 'category', hideBelow: 'lg', width: 'w-44', cell: (c) => <CategoryBadge category={c.category} /> },
+    { id: 'priority', header: 'Priority', sortKey: 'priority', width: 'w-24', cell: (c) => <PriorityBadge level={c.priority_level} /> },
+    { id: 'status', header: 'Status', sortKey: 'status', width: 'w-32', cell: (c) => <StatusBadge status={c.status} /> },
+    { id: 'sla', header: 'SLA', hint: 'Time left against the service-level deadline', sortKey: 'sla', width: 'w-44', cell: (c) => <SlaCell status={c.sla_status} deadline={c.sla_deadline} /> },
+    { id: 'reported', header: 'Reported', sortKey: 'reported', firstSort: 'desc', hideBelow: 'xl', width: 'w-40', cell: (c) => <DateCell value={c.created_at} relative /> },
+    { id: 'actions', header: '', width: 'w-20', align: 'right', locked: true, cell: (c) => <RowActions label={c.complaint_number} primary={{ label: 'Open', to: `/complaints/${c.id}` }} /> },
+  ];
+
   const chip = (id: Filter, label: string, n: number) => (
     <button
       key={id}
       aria-pressed={filter === id}
-      onClick={() => setFilter(id)}
+      onClick={() => { setFilter(id); table.resetPage(); }}
       className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${filter === id ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
     >
       {label} <span className="ml-1 text-slate-400">{n}</span>
@@ -83,44 +100,19 @@ export default function OfficerDashboard() {
                 {chip('review', 'Needs review', review.length)}
               </div>
 
-              {visible.length === 0 ? (
-                <EmptyState title={open.length === 0 ? 'Nothing assigned yet' : 'Nothing in this view'} description={open.length === 0 ? 'New complaints for your department will appear here.' : 'Try another filter.'} />
-              ) : (
-                <>
-                  {/* Desktop table */}
-                  <div className="card hidden overflow-x-auto p-0 md:block">
-                    <table className="data-table">
-                      <caption className="sr-only">Department work queue</caption>
-                      <thead className="border-b border-slate-100 bg-slate-50 text-xs text-slate-500">
-                        <tr>{['Complaint', 'Category', 'Priority', 'Status', 'SLA', 'Time', 'Reported'].map((h) => <th key={h} scope="col" className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
-                      </thead>
-                      <tbody>
-                        {visible.map((c) => {
-                          const rem = remainingMs(c);
-                          return (
-                            <tr key={c.id} className={`row-${c.priority_level}`}>
-                              <td className="max-w-xs px-4 py-3">
-                                <Link to={`/complaints/${c.id}`} className="font-mono text-xs font-medium text-brand-600 hover:underline">{c.complaint_number}</Link>
-                                <p className="mt-0.5 truncate text-xs text-slate-500">{c.ai_title || c.description}</p>
-                              </td>
-                              <td className="px-4 py-3"><CategoryBadge category={c.category} /></td>
-                              <td className="px-4 py-3"><PriorityBadge level={c.priority_level} /></td>
-                              <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                              <td className="px-4 py-3"><SlaBadge status={c.sla_status} /></td>
-                              <td className={`px-4 py-3 text-xs font-medium ${rem < 0 ? 'text-red-700' : 'text-slate-600'}`}>{Number.isFinite(rem) ? fmtRemaining(rem) : '—'}</td>
-                              <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(c.created_at)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* Mobile cards */}
-                  <div className="grid grid-cols-1 gap-3 md:hidden">
-                    {visible.map((c) => <ComplaintCard key={c.id} complaint={c} variant="staff" />)}
-                  </div>
-                </>
-              )}
+              <DataTable<Complaint>
+                caption="Department work queue"
+                columns={columns}
+                rows={table.rows}
+                rowKey={(c) => c.id}
+                rowClassName={(c) => `row-${c.priority_level}`}
+                emptyTitle={open.length === 0 ? 'Nothing assigned yet' : 'Nothing in this view'}
+                emptyDescription={open.length === 0 ? 'New complaints for your department will appear here.' : 'Try another filter.'}
+                sort={table.sort}
+                onSortChange={table.setSort}
+                mobileCard={(c) => <ComplaintCard complaint={c} variant="staff" />}
+                pagination={{ ...table.pagination, noun: 'complaints' }}
+              />
             </div>
           )}
         </QueryBoundary>

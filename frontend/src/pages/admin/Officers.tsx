@@ -4,20 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as org from '../../services/org.service';
 import * as adminService from '../../services/admin.service';
 import { getErrorMessage, getErrorDetails } from '../../services/api';
-import { PageHeader, QueryBoundary, CardSkeleton, Tabs } from '../../components/ui/kit';
+import { PageHeader, Tabs } from '../../components/ui/kit';
 import { Modal } from '../../components/ui/Modal';
 import { CsvButton } from '../../components/ui/CsvButton';
-import { EmptyState } from '../../components/common/EmptyState';
+import { ActiveBadge } from '../../components/common/Badge';
+import { DataTable, FilterSelect, RowActions, SearchInput, useClientTable, type Column } from '../../components/table';
 
 type Filter = 'all' | 'active' | 'inactive';
-
-function StatusPill({ active }: { active: boolean }) {
-  return (
-    <span className={`badge border ${active ? 'border-green-200 bg-green-100 text-green-800' : 'border-slate-300 bg-slate-100 text-slate-600'}`}>
-      <span aria-hidden="true" className="mr-1">{active ? '●' : '○'}</span>{active ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
 
 export default function Officers() {
   const qc = useQueryClient();
@@ -40,6 +33,22 @@ export default function Officers() {
       .filter((o) => !departmentId || String(o.departmentId) === departmentId)
       .filter((o) => !s || `${o.name} ${o.email} ${o.departmentName ?? ''} ${o.wardName ?? ''}`.toLowerCase().includes(s));
   }, [all, search, filter, departmentId]);
+
+  const table = useClientTable(rows, {
+    name: (o) => o.name, department: (o) => o.departmentName, ward: (o) => o.wardName,
+    active: (o) => o.activeAssignments, critical: (o) => o.criticalAssignments, sla: (o) => o.slaBreaches, status: (o) => (o.isActive ? 1 : 0),
+  });
+
+  const columns: Column<org.OfficerOverview>[] = [
+    { id: 'officer', header: 'Officer', sortKey: 'name', locked: true, cell: (o) => <><p className="font-medium text-slate-900">{o.name}</p><p className="text-xs text-slate-500">{o.email}</p></> },
+    { id: 'department', header: 'Department', sortKey: 'department', truncate: true, cell: (o) => <>{o.departmentName ?? <span className="text-slate-400">—</span>}{o.departmentActive === false && <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">dept inactive</span>}</> },
+    { id: 'ward', header: 'Ward', sortKey: 'ward', width: 'w-32', hideBelow: 'lg', cell: (o) => o.wardName ?? <span className="text-slate-400">Any</span> },
+    { id: 'active', header: 'Active', hint: 'Open complaints currently assigned', sortKey: 'active', firstSort: 'desc', width: 'w-20', align: 'right', cell: (o) => <span className="font-semibold">{o.activeAssignments}</span> },
+    { id: 'critical', header: 'Critical', hint: 'Open critical-priority complaints assigned', sortKey: 'critical', firstSort: 'desc', width: 'w-20', align: 'right', cell: (o) => <span className={o.criticalAssignments ? 'font-semibold text-red-700' : ''}>{o.criticalAssignments}</span> },
+    { id: 'sla', header: 'SLA breaches', sortKey: 'sla', firstSort: 'desc', width: 'w-28', align: 'right', cell: (o) => <span className={o.slaBreaches ? 'font-semibold text-red-700' : ''}>{o.slaBreaches}{o.slaBreaches > 0 && ' ⚠'}</span> },
+    { id: 'status', header: 'Status', sortKey: 'status', width: 'w-28', cell: (o) => <ActiveBadge active={o.isActive} /> },
+    { id: 'actions', header: '', width: 'w-20', align: 'right', locked: true, cell: (o) => <RowActions label={o.name} primary={{ label: 'Edit', onClick: () => setEditing(o) }} /> },
+  ];
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['officers-overview'] });
@@ -71,67 +80,53 @@ export default function Officers() {
         }
       />
 
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Tabs<Filter>
-            tabs={[{ id: 'all', label: 'All', badge: all.length }, { id: 'active', label: 'Active', badge: activeCount }, { id: 'inactive', label: 'Inactive', badge: all.length - activeCount }]}
-            value={filter}
-            onChange={setFilter}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <select aria-label="Department" className="input w-auto max-w-[16rem]" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-            <option value="">All departments</option>
-            {(departments.data ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-          <input aria-label="Search officers" className="input w-full sm:w-56" placeholder="Search officers…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+      <div className="mt-5">
+        <Tabs<Filter>
+          tabs={[{ id: 'all', label: 'All', badge: all.length }, { id: 'active', label: 'Active', badge: activeCount }, { id: 'inactive', label: 'Inactive', badge: all.length - activeCount }]}
+          value={filter}
+          onChange={(f) => { setFilter(f); table.resetPage(); }}
+        />
       </div>
 
       <div className="mt-4">
-        <QueryBoundary query={q} skeleton={<CardSkeleton lines={6} />}>
-          {() =>
-            rows.length === 0 ? (
-              <EmptyState title="No officers match" description="Try a different filter, or add an officer." action={<button className="btn-primary" onClick={() => setCreating(true)}>Add officer</button>} />
-            ) : (
-              <>
-                <div className="card hidden overflow-x-auto p-0 md:block">
-                  <table className="data-table">
-                    <caption className="sr-only">Officers with department, ward and workload</caption>
-                    <thead><tr>{['Officer', 'Department', 'Ward', 'Active', 'Critical', 'SLA breaches', 'Status', ''].map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
-                    <tbody>
-                      {rows.map((o) => (
-                        <tr key={o.id} className={o.criticalAssignments > 0 ? 'row-CRITICAL' : o.slaBreaches > 0 ? 'row-HIGH' : ''}>
-                          <td><p className="font-medium text-slate-900">{o.name}</p><p className="text-xs text-slate-500">{o.email}</p></td>
-                          <td>{o.departmentName ?? <span className="text-slate-400">—</span>}{o.departmentActive === false && <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">dept inactive</span>}</td>
-                          <td>{o.wardName ?? <span className="text-slate-400">Any</span>}</td>
-                          <td className="font-semibold">{o.activeAssignments}</td>
-                          <td className={o.criticalAssignments ? 'font-semibold text-red-700' : ''}>{o.criticalAssignments}</td>
-                          <td className={o.slaBreaches ? 'font-semibold text-red-700' : ''}>{o.slaBreaches}{o.slaBreaches > 0 && ' ⚠'}</td>
-                          <td><StatusPill active={o.isActive} /></td>
-                          <td><div className="flex justify-end"><button className="btn-secondary !px-2.5 !py-1 text-xs" onClick={() => setEditing(o)}>Edit</button></div></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <ul className="space-y-3 md:hidden">
-                  {rows.map((o) => (
-                    <li key={o.id} className="card p-4">
-                      <div className="flex items-start justify-between gap-2"><div><p className="font-semibold text-slate-900">{o.name}</p><p className="text-xs text-slate-500">{o.departmentName ?? '—'} · {o.wardName ?? 'Any ward'}</p></div><StatusPill active={o.isActive} /></div>
-                      <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">Active</dt><dd className="text-base font-semibold">{o.activeAssignments}</dd></div>
-                        <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">Critical</dt><dd className={`text-base font-semibold ${o.criticalAssignments ? 'text-red-700' : ''}`}>{o.criticalAssignments}</dd></div>
-                        <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">SLA breaches</dt><dd className={`text-base font-semibold ${o.slaBreaches ? 'text-red-700' : ''}`}>{o.slaBreaches}</dd></div>
-                      </dl>
-                      <button className="btn-secondary mt-3 w-full text-xs" onClick={() => setEditing(o)}>Edit officer</button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )
+        <DataTable<org.OfficerOverview>
+          caption="Officers with department, ward and workload"
+          columns={columns}
+          rows={q.data ? table.rows : undefined}
+          rowKey={(o) => o.id}
+          rowClassName={(o) => (o.criticalAssignments > 0 ? 'row-CRITICAL' : o.slaBreaches > 0 ? 'row-HIGH' : undefined)}
+          isLoading={q.isLoading}
+          isFetching={q.isFetching}
+          error={q.error}
+          errorTitle="Unable to load officers"
+          onRetry={() => q.refetch()}
+          emptyTitle="No officers yet"
+          emptyDescription="Add an officer and assign them to a department."
+          emptyAction={<button className="btn-primary text-xs" onClick={() => setCreating(true)}>Add officer</button>}
+          filtered={!!search || !!departmentId || filter !== 'all'}
+          filteredTitle="No officers match your filters"
+          onClearFilters={() => { setSearch(''); setDepartmentId(''); setFilter('all'); table.resetPage(); }}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          toolbar={
+            <>
+              <SearchInput label="Search officers" value={search} onChange={(v) => { setSearch(v); table.resetPage(); }} placeholder="Search name, email, department, ward…" />
+              <FilterSelect label="Department" allLabel="All departments" value={departmentId} onChange={(v) => { setDepartmentId(v); table.resetPage(); }} options={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))} />
+            </>
           }
-        </QueryBoundary>
+          mobileCard={(o) => (
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-2"><div><p className="font-semibold text-slate-900">{o.name}</p><p className="text-xs text-slate-500">{o.departmentName ?? '—'} · {o.wardName ?? 'Any ward'}</p></div><ActiveBadge active={o.isActive} /></div>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">Active</dt><dd className="text-base font-semibold">{o.activeAssignments}</dd></div>
+                <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">Critical</dt><dd className={`text-base font-semibold ${o.criticalAssignments ? 'text-red-700' : ''}`}>{o.criticalAssignments}</dd></div>
+                <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">SLA breaches</dt><dd className={`text-base font-semibold ${o.slaBreaches ? 'text-red-700' : ''}`}>{o.slaBreaches}</dd></div>
+              </dl>
+              <button className="btn-secondary mt-3 w-full text-xs" onClick={() => setEditing(o)}>Edit officer</button>
+            </div>
+          )}
+          pagination={{ ...table.pagination, noun: 'officers' }}
+        />
       </div>
       <p className="mt-3 text-xs text-slate-500">Need to assign a complaint? Open it and use <em>Recommend officer</em> - rankings consider the officer&apos;s ward, workload, critical load, SLA breaches and proximity. You always make the final assignment. <Link to="/admin/departments" className="font-medium text-brand-600 hover:underline">Departments →</Link></p>
 

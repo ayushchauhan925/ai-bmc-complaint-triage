@@ -195,6 +195,7 @@ test.describe('admin', () => {
   test('citizens cannot see admin pages (UX guard; the API enforces it too)', async ({ page, context }) => {
     await context.clearCookies();
     await page.evaluate(() => localStorage.clear());
+    await page.goto('about:blank'); // stop the admin page polling with a now-missing token (its 401 redirect would abort the next navigation)
     await login(page, CITIZEN);
     await page.goto('/admin');
     await expect(page).not.toHaveURL(/\/admin$/);

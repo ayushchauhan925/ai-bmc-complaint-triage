@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { ADMIN, expectNoErrorPanel, login, watchErrors } from './helpers';
 
+import type { Locator, Page } from '@playwright/test';
+
+/** Row actions live in an overflow menu: primary action stays visible, the rest sit behind the kebab. */
+async function menuItem(page: Page, row: Locator, name: string) {
+  await row.getByRole('button', { name: /More actions/ }).click();
+  return page.getByRole('menuitem', { name });
+}
+
 test.describe('departments & officers (admin)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, ADMIN);
@@ -48,13 +56,13 @@ test.describe('departments & officers (admin)', () => {
     await page.goto('/admin/departments');
     const row = page.locator('table.data-table tbody tr', { hasText: 'General Civic Services' });
     await expect(row).toContainText('Routing fallback');
-    await expect(row.getByRole('button', { name: 'Deactivate' })).toBeDisabled();
+    await expect(await menuItem(page, row, 'Deactivate')).toBeDisabled();
   });
 
   test('deactivating a department with open complaints demands a reassignment target', async ({ page }) => {
     await page.goto('/admin/departments');
     const row = page.locator('table.data-table tbody tr', { hasText: 'Roads & Traffic Infrastructure' });
-    await row.getByRole('button', { name: 'Deactivate' }).click();
+    await (await menuItem(page, row, 'Deactivate')).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText(/open complaints? must move first/i);
     const confirm = dialog.getByRole('button', { name: 'Reassign and deactivate' });
@@ -67,7 +75,7 @@ test.describe('departments & officers (admin)', () => {
   test('contact details can be edited', async ({ page }) => {
     await page.goto('/admin/departments');
     const row = page.locator('table.data-table tbody tr', { hasText: 'Parks & Recreation' });
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await (await menuItem(page, row, 'Edit')).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Contact email').fill('parks.e2e@city.example');
     await dialog.getByRole('button', { name: 'Save' }).click();
@@ -93,7 +101,7 @@ test.describe('departments & officers (admin)', () => {
     await page.locator('table.data-table tbody tr', { hasText: 'Roads & Traffic Infrastructure' }).locator('a').first().click();
     await expect(page).toHaveURL(/\/admin\/officers\?department_id=/);
     const rows = page.locator('table.data-table tbody tr');
-    await expect(rows.first()).toBeVisible();
+    await expect(rows.first()).toContainText('Roads & Traffic Infrastructure'); // wait for real rows, not skeletons
     for (const text of await rows.allInnerTexts()) expect(text).toContain('Roads & Traffic Infrastructure');
   });
 

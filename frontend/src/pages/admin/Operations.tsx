@@ -7,6 +7,7 @@ import { PageHeader, QueryBoundary, Tabs, InsufficientData, CardSkeleton, PageSk
 import { CHART_BRAND, CHART_GRID, CHART_AXIS_TEXT } from '../../utils/chartColors';
 import { formatCategory } from '../../utils/constants';
 import { RefreshIcon } from '../../components/common/Icons';
+import { DataTable, RowActions, useClientTable, formatDecimal, formatNumber, type Column } from '../../components/table';
 
 const AXIS = { fontSize: 11, fill: CHART_AXIS_TEXT };
 type Tab = 'anomalies' | 'forecast' | 'workload';
@@ -107,17 +108,7 @@ function ForecastCenter() {
             <div className="card p-4">
               <h3 className="text-sm font-semibold text-slate-800">Expected demand — next {f.horizonDays} days</h3>
               {demand.length === 0 ? <div className="mt-3"><InsufficientData reason="No category has enough history to forecast." /></div> : (
-                <div className="mt-3 overflow-x-auto">
-                  <table className="data-table data-table-compact">
-                    <thead className="text-xs text-slate-500"><tr><th className="py-1.5 pr-3 font-medium">Category</th><th className="py-1.5 pr-3 font-medium">Expected</th><th className="py-1.5 pr-3 font-medium">Previous {f.horizonDays} days</th><th className="py-1.5 font-medium">Change</th></tr></thead>
-                    <tbody>{demand.map((d) => (
-                      <tr key={d.category} className="border-t border-slate-100">
-                        <td className="py-1.5 pr-3">{formatCategory(d.category)}</td>
-                        <td className="py-1.5 pr-3 font-medium">{d.next}</td><td className="py-1.5 pr-3 text-slate-500">{d.recent}</td>
-                        <td className="py-1.5">{d.change === null ? '—' : `${d.change > 0 ? '▲' : d.change < 0 ? '▼' : '='} ${Math.abs(Math.round(d.change * 100))}%`}</td>
-                      </tr>))}</tbody>
-                  </table>
-                </div>
+                <div className="mt-3"><DemandTable demand={demand} days={f.horizonDays} /></div>
               )}
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -132,6 +123,52 @@ function ForecastCenter() {
   );
 }
 
+type Demand = { category: string; next: number; recent: number; change: number | null };
+function DemandTable({ demand, days }: { demand: Demand[]; days: number }) {
+  const table = useClientTable(demand, { category: (d) => formatCategory(d.category), next: (d) => d.next, recent: (d) => d.recent, change: (d) => d.change });
+  const columns: Column<Demand>[] = [
+    { id: 'category', header: 'Category', sortKey: 'category', locked: true, cell: (d) => formatCategory(d.category) },
+    { id: 'next', header: 'Expected', hint: `Forecast complaints over the next ${days} days`, sortKey: 'next', firstSort: 'desc', width: 'w-28', align: 'right', cell: (d) => <span className="font-medium">{formatNumber(d.next)}</span> },
+    { id: 'recent', header: `Previous ${days} days`, sortKey: 'recent', firstSort: 'desc', width: 'w-36', align: 'right', cell: (d) => <span className="text-slate-500">{formatNumber(d.recent)}</span> },
+    { id: 'change', header: 'Change', sortKey: 'change', firstSort: 'desc', width: 'w-28', align: 'right', cell: (d) => (d.change === null ? '—' : `${d.change > 0 ? '▲' : d.change < 0 ? '▼' : '='} ${Math.abs(Math.round(d.change * 100))}%`) },
+  ];
+  return <DataTable<Demand> bare caption="Expected demand by category" columns={columns} rows={table.rows} rowKey={(d) => d.category} emptyTitle="No forecast" sort={table.sort} onSortChange={table.setSort} pagination={{ ...table.pagination, noun: 'categories' }} />;
+}
+
+type Dept = Awaited<ReturnType<typeof platform.departmentWorkload>>['departments'][number];
+function WorkloadTable({ departments, dept, setDept }: { departments: Dept[]; dept: number | undefined; setDept: (id: number | undefined) => void }) {
+  const rows = departments.filter((d) => d.assigned > 0);
+  const arrow = { UP: '▲ Up', DOWN: '▼ Down', FLAT: '= Flat', NEW: '▲ New' } as const;
+  const table = useClientTable(rows, {
+    department: (d) => d.department, pending: (d) => d.pending, overdue: (d) => d.overdue, high: (d) => d.pendingHighPriority, resolved: (d) => d.resolved,
+    avg: (d) => d.avgResolutionHours, sla: (d) => d.slaCompliance, incoming: (d) => d.incoming7d,
+  });
+  const columns: Column<Dept>[] = [
+    { id: 'department', header: 'Department', sortKey: 'department', locked: true, truncate: true, cell: (d) => <span className="font-medium text-slate-800">{d.department}</span> },
+    { id: 'pending', header: 'Pending', sortKey: 'pending', firstSort: 'desc', width: 'w-24', align: 'right', cell: (d) => formatNumber(d.pending) },
+    { id: 'overdue', header: 'Overdue', sortKey: 'overdue', firstSort: 'desc', width: 'w-24', align: 'right', cell: (d) => <span className={d.overdue ? 'font-semibold text-red-700' : ''}>{formatNumber(d.overdue)}{d.overdue ? ' ⚠' : ''}</span> },
+    { id: 'high', header: 'High priority', hint: 'Pending complaints with high or critical priority', sortKey: 'high', firstSort: 'desc', hideBelow: 'md', width: 'w-32', align: 'right', cell: (d) => formatNumber(d.pendingHighPriority) },
+    { id: 'resolved', header: 'Resolved', sortKey: 'resolved', firstSort: 'desc', hideBelow: 'md', width: 'w-24', align: 'right', cell: (d) => formatNumber(d.resolved) },
+    { id: 'avg', header: 'Avg resolution', sortKey: 'avg', hideBelow: 'lg', width: 'w-36', align: 'right', cell: (d) => (d.avgResolutionHours === null ? '—' : `${formatDecimal(d.avgResolutionHours, 1)} h`) },
+    { id: 'sla', header: 'SLA compliance', hint: 'Share of judged complaints resolved within SLA', sortKey: 'sla', firstSort: 'desc', hideBelow: 'lg', width: 'w-36', align: 'right', cell: (d) => (d.slaCompliance === null ? <span className="text-slate-400">no data</span> : pct(d.slaCompliance)) },
+    { id: 'incoming', header: 'Incoming 7d', sortKey: 'incoming', firstSort: 'desc', hideBelow: 'xl', width: 'w-32', align: 'right', cell: (d) => <>{formatNumber(d.incoming7d)} <span className="text-xs text-slate-400">{arrow[d.incomingTrend]}</span></> },
+    { id: 'actions', header: '', width: 'w-32', align: 'right', locked: true, cell: (d) => <RowActions label={d.department} primary={{ label: dept === d.departmentId ? 'Hide trend' : 'View trend', onClick: () => setDept(dept === d.departmentId ? undefined : d.departmentId) }} /> },
+  ];
+  return (
+    <DataTable<Dept>
+      caption="Department workload"
+      columns={columns}
+      rows={table.rows}
+      rowKey={(d) => d.departmentId}
+      rowClassName={(d) => (dept === d.departmentId ? 'row-selected' : undefined)}
+      emptyTitle="No department has assigned complaints yet"
+      sort={table.sort}
+      onSortChange={table.setSort}
+      pagination={{ ...table.pagination, noun: 'departments' }}
+    />
+  );
+}
+
 /* ------------------------------------------------------------- Workload */
 function WorkloadCenter() {
   const [dept, setDept] = useState<number | undefined>();
@@ -141,28 +178,7 @@ function WorkloadCenter() {
     <QueryBoundary query={q} skeleton={<PageSkeleton />}>
       {({ departments, trend }) => (
         <div className="space-y-4">
-          <div className="card overflow-x-auto p-0">
-            <table className="data-table">
-              <caption className="sr-only">Department workload</caption>
-              <thead className="bg-slate-50 text-xs text-slate-500">
-                <tr>{['Department', 'Pending', 'Overdue', 'High priority', 'Resolved', 'Avg resolution', 'SLA compliance', 'Incoming 7d'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {departments.filter((d) => d.assigned > 0).map((d) => (
-                  <tr key={d.departmentId} className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${dept === d.departmentId ? 'bg-brand-50' : ''}`} onClick={() => setDept(dept === d.departmentId ? undefined : d.departmentId)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setDept(dept === d.departmentId ? undefined : d.departmentId); }} aria-selected={dept === d.departmentId}>
-                    <td className="px-3 py-2 font-medium text-slate-800">{d.department}</td>
-                    <td className="px-3 py-2">{d.pending}</td>
-                    <td className={`px-3 py-2 ${d.overdue ? 'font-semibold text-red-700' : ''}`}>{d.overdue}{d.overdue ? ' ⚠' : ''}</td>
-                    <td className="px-3 py-2">{d.pendingHighPriority}</td>
-                    <td className="px-3 py-2">{d.resolved}</td>
-                    <td className="px-3 py-2">{d.avgResolutionHours === null ? '—' : `${d.avgResolutionHours} h`}</td>
-                    <td className="px-3 py-2">{d.slaCompliance === null ? <span className="text-slate-400">no data</span> : pct(d.slaCompliance)}</td>
-                    <td className="px-3 py-2">{d.incoming7d} <span className="text-xs text-slate-400">{arrow[d.incomingTrend]}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <WorkloadTable departments={departments} dept={dept} setDept={setDept} />
           <p className="text-xs text-slate-500">SLA compliance counts complaints already judged (resolved on time / late, or currently overdue). Select a department to drill down.</p>
 
           {dept && (() => {

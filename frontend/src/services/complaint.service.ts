@@ -11,6 +11,8 @@ export interface ComplaintFilters {
   ward_id?: number;
   search?: string;
   review_required?: boolean;
+  sort?: string;
+  order?: 'asc' | 'desc';
 }
 
 export async function createComplaint(payload: {

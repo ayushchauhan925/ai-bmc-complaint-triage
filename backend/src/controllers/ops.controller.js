@@ -18,8 +18,8 @@ const AppError = require('../utils/AppError');
 const env = require('../config/env');
 
 const auditLogs = asyncHandler(async (req, res) => {
-  const { entity_type, entity_id, action, actor_id, date_from, date_to, page, limit } = req.query;
-  const data = await auditService.list({ entityType: entity_type, entityId: entity_id, action, actorId: actor_id, dateFrom: date_from, dateTo: date_to, page, limit });
+  const { entity_type, entity_id, action, actor_id, date_from, date_to, page, limit, search, order } = req.query;
+  const data = await auditService.list({ entityType: entity_type, entityId: entity_id, action, actorId: actor_id, dateFrom: date_from, dateTo: date_to, page, limit, search: search ? String(search).slice(0, 100) : undefined, order });
   res.status(200).json({ success: true, data });
 });
 

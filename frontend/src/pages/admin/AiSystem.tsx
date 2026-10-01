@@ -6,12 +6,30 @@ import * as platform from '../../services/platform.service';
 import { getErrorMessage } from '../../services/api';
 import { PageHeader, QueryBoundary, Tabs, PageSkeleton, CardSkeleton, InsufficientData, Meter, fmtDate, pct } from '../../components/ui/kit';
 import { CHART_BRAND, CHART_GRID, CHART_AXIS_TEXT } from '../../utils/chartColors';
+import { DataTable, useClientTable, formatDecimal, formatNumber, type Column } from '../../components/table';
 
 type Tab = 'quality' | 'cost' | 'system';
 const AXIS = { fontSize: 11, fill: CHART_AXIS_TEXT };
 const Metric = ({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) => (
   <div className="card p-4"><p className="text-xs uppercase tracking-wide text-slate-400">{label}</p><p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>{hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}</div>
 );
+
+type UseCase = platform.AiUsage['byUseCase'][number];
+function UsageTable({ rows }: { rows: UseCase[] }) {
+  const table = useClientTable(rows, {
+    useCase: (r) => r.useCase, requests: (r) => r.requests, failures: (r) => r.failures, tokens: (r) => r.totalTokens, cost: (r) => r.estimatedCostUsd, latency: (r) => r.avgLatencyMs,
+  });
+  const top = rows[0]?.useCase;
+  const columns: Column<UseCase>[] = [
+    { id: 'useCase', header: 'Use case', sortKey: 'useCase', locked: true, cell: (r) => <span className="font-medium">{r.useCase.replace(/_/g, ' ')}{r.useCase === top && rows.length > 1 && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">most expensive</span>}</span> },
+    { id: 'requests', header: 'Requests', sortKey: 'requests', firstSort: 'desc', width: 'w-28', align: 'right', cell: (r) => formatNumber(r.requests) },
+    { id: 'failures', header: 'Failures', sortKey: 'failures', firstSort: 'desc', width: 'w-36', align: 'right', cell: (r) => <>{formatNumber(r.failures)} <span className="text-slate-400">({pct(r.failureRate)})</span></> },
+    { id: 'tokens', header: 'Tokens', sortKey: 'tokens', firstSort: 'desc', hideBelow: 'md', width: 'w-28', align: 'right', cell: (r) => formatNumber(r.totalTokens) },
+    { id: 'cost', header: 'Est. cost', hint: 'Estimate, not billing', sortKey: 'cost', firstSort: 'desc', width: 'w-28', align: 'right', cell: (r) => `${formatDecimal(r.estimatedCostUsd, 4)}` },
+    { id: 'latency', header: 'Avg latency', sortKey: 'latency', firstSort: 'desc', hideBelow: 'md', width: 'w-32', align: 'right', cell: (r) => `${formatNumber(r.avgLatencyMs)} ms` },
+  ];
+  return <DataTable<UseCase> caption="AI usage by use case" columns={columns} rows={table.rows} rowKey={(r) => r.useCase} emptyTitle="No AI usage recorded" sort={table.sort} onSortChange={table.setSort} pagination={{ ...table.pagination, noun: 'use cases' }} />;
+}
 
 function Quality() {
   const qc = useQueryClient();
@@ -91,13 +109,7 @@ function Cost() {
               <Metric label="Tokens" value={u.totals.totalTokens.toLocaleString()} />
               <Metric label="Estimated cost" value={`$${u.totals.estimatedCostUsd.toFixed(4)}`} hint="estimate, not billing" />
             </div>
-            <div className="card overflow-x-auto p-0">
-              <table className="data-table"><caption className="sr-only">AI usage by use case</caption>
-                <thead className="bg-slate-50 text-xs text-slate-500"><tr>{['Use case', 'Requests', 'Failures', 'Tokens', 'Est. cost', 'Avg latency'].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
-                <tbody>{u.byUseCase.map((r, i) => (
-                  <tr key={r.useCase} className="border-t border-slate-100"><td className="px-3 py-2 font-medium">{r.useCase.replace(/_/g, ' ')}{i === 0 && u.byUseCase.length > 1 && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">most expensive</span>}</td><td className="px-3 py-2">{r.requests}</td><td className="px-3 py-2">{r.failures} ({pct(r.failureRate)})</td><td className="px-3 py-2">{r.totalTokens.toLocaleString()}</td><td className="px-3 py-2">${r.estimatedCostUsd.toFixed(4)}</td><td className="px-3 py-2">{r.avgLatencyMs} ms</td></tr>))}</tbody>
-              </table>
-            </div>
+            <UsageTable rows={u.byUseCase} />
             <div className="card p-4"><h3 className="text-sm font-semibold text-slate-800">Daily estimated cost</h3>
               <div className="mt-3 h-44" role="img" aria-label="Daily estimated AI cost"><ResponsiveContainer width="100%" height="100%"><BarChart data={u.daily.map((d) => ({ ...d, date: String(d.date).slice(5, 10) }))}><CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} /><XAxis dataKey="date" tick={AXIS} tickLine={false} axisLine={false} /><YAxis tick={AXIS} tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="estimatedCostUsd" name="Est. cost ($)" fill={CHART_BRAND} radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div>
             </div>

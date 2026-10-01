@@ -9,11 +9,32 @@ import { PdfButton } from '../components/ui/PdfButton';
 import { publicSummaryReport } from '../utils/pdf';
 import { ErrorPanel, PageSkeleton, InsufficientData, Meter, fmtDate } from '../components/ui/kit';
 import { EmptyState } from '../components/common/EmptyState';
+import { DataTable, useClientTable, formatDecimal, formatNumber, type Column } from '../components/table';
 import { CHART_BRAND, CHART_GRID, CHART_AXIS_TEXT, STATUS_CHART_COLORS } from '../utils/chartColors';
 import { formatCategory, formatStatus } from '../utils/constants';
 import { ShieldIcon, CheckCircleIcon, ClockIcon, LayersIcon } from '../components/common/Icons';
 
 const AXIS = { fontSize: 11, fill: CHART_AXIS_TEXT };
+
+type PublicDept = NonNullable<PublicStatistics['by_department']>[number];
+function DepartmentTable({ rows }: { rows: PublicDept[] }) {
+  const table = useClientTable(rows, {
+    department: (r) => r.department, total: (r) => r.total, resolved: (r) => (r.total > 0 ? r.resolved / r.total : 0), avg: (r) => r.avg_resolution_hours,
+  });
+  const columns: Column<PublicDept>[] = [
+    { id: 'department', header: 'Department', sortKey: 'department', locked: true, cell: (r) => <span className="font-medium text-slate-800">{r.department}</span> },
+    { id: 'total', header: 'Complaints', sortKey: 'total', firstSort: 'desc', width: 'w-28', align: 'right', cell: (r) => formatNumber(r.total) },
+    {
+      id: 'resolved', header: 'Resolved', sortKey: 'resolved', firstSort: 'desc', width: 'w-1/3 min-w-[12rem]',
+      cell: (r) => {
+        const rate = r.total > 0 ? Math.round((r.resolved / r.total) * 100) : 0;
+        return <div className="flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-green-500" style={{ width: `${rate}%` }} /></div><span className="w-24 text-right text-xs text-slate-600">{rate}% · {formatNumber(r.resolved)}</span></div>;
+      },
+    },
+    { id: 'avg', header: 'Avg. time', sortKey: 'avg', width: 'w-28', align: 'right', cell: (r) => (r.avg_resolution_hours === null ? '—' : r.avg_resolution_hours >= 48 ? `${formatDecimal(r.avg_resolution_hours / 24, 1)} d` : `${formatDecimal(r.avg_resolution_hours, 1)} h`) },
+  ];
+  return <DataTable<PublicDept> bare caption="Complaints handled and resolved by department" columns={columns} rows={table.rows} rowKey={(r) => r.department} emptyTitle="No departments to show" sort={table.sort} onSortChange={table.setSort} pagination={{ ...table.pagination, noun: 'departments' }} />;
+}
 
 function Kpi({ label, value, hint, children }: { label: string; value: React.ReactNode; hint?: React.ReactNode; children?: React.ReactNode }) {
   return (
@@ -123,25 +144,7 @@ function Dashboard({ d }: { d: PublicStatistics }) {
       {/* Departments */}
       <Card title="Department performance" subtitle={`How each department is doing. Departments with fewer than ${d.min_group_size ?? 3} complaints are not shown.`}>
         {departments.length === 0 ? <InsufficientData reason="Not enough complaints per department yet." /> : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <caption className="sr-only">Complaints handled and resolved by department</caption>
-              <thead className="text-xs text-slate-500"><tr><th scope="col" className="py-2 pr-4 font-medium">Department</th><th scope="col" className="py-2 pr-4 font-medium">Complaints</th><th scope="col" className="w-1/3 py-2 pr-4 font-medium">Resolved</th><th scope="col" className="py-2 font-medium">Avg. time</th></tr></thead>
-              <tbody>
-                {departments.map((dep) => {
-                  const rate = dep.total > 0 ? Math.round((dep.resolved / dep.total) * 100) : 0;
-                  return (
-                    <tr key={dep.department} className="border-t border-slate-100">
-                      <td className="py-3 pr-4 font-medium text-slate-800">{dep.department}</td>
-                      <td className="py-3 pr-4 text-slate-600">{dep.total.toLocaleString()}</td>
-                      <td className="py-3 pr-4"><div className="flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-green-500" style={{ width: `${rate}%` }} /></div><span className="w-20 text-right text-xs text-slate-600">{rate}% · {dep.resolved}</span></div></td>
-                      <td className="py-3 text-slate-600">{dep.avg_resolution_hours === null ? '—' : dep.avg_resolution_hours >= 48 ? `${(dep.avg_resolution_hours / 24).toFixed(1)} d` : `${dep.avg_resolution_hours} h`}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DepartmentTable rows={departments} />
         )}
       </Card>
 
