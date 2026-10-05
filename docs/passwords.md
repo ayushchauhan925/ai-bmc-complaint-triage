@@ -44,7 +44,28 @@ Each officer belongs to one department and sees only that department's complaint
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@civicconnect.demo` | `Password123!` |
-| Citizen (example) | `aarav.sharma@example.demo` | `Password123!` |
+
+### Demo citizens (all use `Password123!`)
+
+| Name | Email (username) | Notes |
+|---|---|---|
+| Aarav Sharma | `aarav.sharma@example.demo` | 5 complaints (best for demos) |
+| Priya Patel | `priya.patel@example.demo` | 1 complaint |
+| Rohan Mehta | `rohan.mehta@example.demo` | no complaints yet (use to submit a new one) |
+| Sneha Iyer | `sneha.iyer@example.demo` | no complaints yet (use to submit a new one) |
+| Vikram Singh | `vikram.singh@example.demo` | no complaints yet (use to submit a new one) |
+| Anjali Desai | `anjali.desai@example.demo` | no complaints yet (use to submit a new one) |
+| Karan Joshi | `karan.joshi@example.demo` | no complaints yet (use to submit a new one) |
+| Neha Kulkarni | `neha.kulkarni@example.demo` | no complaints yet (use to submit a new one) |
+| Arjun Nair | `arjun.nair@example.demo` | no complaints yet (use to submit a new one) |
+| Divya Rao | `divya.rao@example.demo` | no complaints yet (use to submit a new one) |
+| Sanjay Verma | `sanjay.verma@example.demo` | no complaints yet (use to submit a new one) |
+| Pooja Reddy | `pooja.reddy@example.demo` | no complaints yet (use to submit a new one) |
+| Amit Shah | `amit.shah@example.demo` | no complaints yet (use to submit a new one) |
+| Kavita Menon | `kavita.menon@example.demo` | no complaints yet (use to submit a new one) |
+| Rahul Gupta | `rahul.gupta@example.demo` | no complaints yet (use to submit a new one) |
+
+Citizens can submit, track, give feedback on and reopen their own complaints only. You can also register a new citizen account from the sign-up page.
 
 ## Changing passwords
 
