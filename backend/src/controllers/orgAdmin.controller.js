@@ -58,4 +58,11 @@ const updateOfficer = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
-module.exports = { listDepartmentOverview, updateDepartment, officerOverview, createOfficer, updateOfficer };
+const changeOfficerPassword = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) throw new AppError('Invalid officer id.', 400);
+  await officerService.setOfficerPassword(id, req.body.password, req.user);
+  res.status(200).json({ success: true, message: 'Password updated.' });
+});
+
+module.exports = { listDepartmentOverview, updateDepartment, officerOverview, createOfficer, updateOfficer, changeOfficerPassword };

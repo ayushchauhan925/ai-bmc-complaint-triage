@@ -20,6 +20,7 @@ export default function Officers() {
   const [departmentId, setDepartmentId] = useState(params.get('department_id') || '');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<org.OfficerOverview | null>(null);
+  const [resetting, setResetting] = useState<org.OfficerOverview | null>(null);
 
   const q = useQuery({ queryKey: ['officers-overview'], queryFn: () => org.officerOverview() });
   const departments = useQuery({ queryKey: ['departments'], queryFn: adminService.listDepartments });
@@ -47,7 +48,7 @@ export default function Officers() {
     { id: 'critical', header: 'Critical', hint: 'Open critical-priority complaints assigned', sortKey: 'critical', firstSort: 'desc', width: 'w-20', align: 'right', cell: (o) => <span className={o.criticalAssignments ? 'font-semibold text-red-700' : ''}>{o.criticalAssignments}</span> },
     { id: 'sla', header: 'SLA breaches', sortKey: 'sla', firstSort: 'desc', width: 'w-28', align: 'right', cell: (o) => <span className={o.slaBreaches ? 'font-semibold text-red-700' : ''}>{o.slaBreaches}{o.slaBreaches > 0 && ' ⚠'}</span> },
     { id: 'status', header: 'Status', sortKey: 'status', width: 'w-28', cell: (o) => <ActiveBadge active={o.isActive} /> },
-    { id: 'actions', header: '', width: 'w-20', align: 'right', locked: true, cell: (o) => <RowActions label={o.name} primary={{ label: 'Edit', onClick: () => setEditing(o) }} /> },
+    { id: 'actions', header: '', width: 'w-20', align: 'right', locked: true, cell: (o) => <RowActions label={o.name} primary={{ label: 'Edit', onClick: () => setEditing(o) }} items={[{ label: 'Reset password', onClick: () => setResetting(o) }]} /> },
   ];
 
   const refresh = () => {
@@ -122,7 +123,10 @@ export default function Officers() {
                 <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">Critical</dt><dd className={`text-base font-semibold ${o.criticalAssignments ? 'text-red-700' : ''}`}>{o.criticalAssignments}</dd></div>
                 <div className="rounded-lg bg-slate-50 py-2"><dt className="text-slate-500">SLA breaches</dt><dd className={`text-base font-semibold ${o.slaBreaches ? 'text-red-700' : ''}`}>{o.slaBreaches}</dd></div>
               </dl>
-              <button className="btn-secondary mt-3 w-full text-xs" onClick={() => setEditing(o)}>Edit officer</button>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button className="btn-secondary w-full text-xs" onClick={() => setEditing(o)}>Edit officer</button>
+                <button className="btn-secondary w-full text-xs" onClick={() => setResetting(o)}>Reset password</button>
+              </div>
             </div>
           )}
           pagination={{ ...table.pagination, noun: 'officers' }}
@@ -132,7 +136,48 @@ export default function Officers() {
 
       <OfficerForm open={creating} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); refresh(); }} departments={departments.data ?? []} wards={wards.data ?? []} defaultDepartmentId={departmentId} />
       <OfficerForm open={!!editing} officer={editing ?? undefined} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} departments={departments.data ?? []} wards={wards.data ?? []} />
+      <PasswordDialog officer={resetting} onClose={() => setResetting(null)} />
     </div>
+  );
+}
+
+function PasswordDialog({ officer, onClose }: { officer: org.OfficerOverview | null; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => { setPassword(''); setConfirm(''); setDone(false); setError(''); }, [officer]);
+
+  const save = useMutation({
+    mutationFn: () => org.changeOfficerPassword(officer!.id, password),
+    onSuccess: () => setDone(true),
+    onError: (e) => { const f = getErrorDetails(e); setError(f ? f.map((x) => x.message).join(' ') : getErrorMessage(e)); },
+  });
+
+  const mismatch = confirm.length > 0 && password !== confirm;
+  const valid = password.length >= 8 && password === confirm;
+
+  return (
+    <Modal
+      open={!!officer}
+      title={officer ? `Reset password for ${officer.name}` : 'Reset password'}
+      onClose={onClose}
+      footer={done
+        ? <button className="btn-primary" onClick={onClose}>Done</button>
+        : <><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" disabled={!valid || save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Saving…' : 'Set new password'}</button></>}
+    >
+      {done ? (
+        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Password updated. Share it with the officer securely. Any lockout on the account has been cleared.</p>
+      ) : (
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (valid) save.mutate(); }}>
+          {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          <p className="text-xs text-slate-500">Existing passwords can&apos;t be viewed (they are stored as one-way hashes). Setting a new one replaces it immediately.</p>
+          <div><label className="label" htmlFor="op-new">New password</label><input id="op-new" type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} autoComplete="new-password" required /><p className="mt-1 text-xs text-slate-500">At least 8 characters.</p></div>
+          <div><label className="label" htmlFor="op-confirm">Confirm password</label><input id="op-confirm" type="password" className="input" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />{mismatch && <p role="alert" className="mt-1 text-xs text-red-600">Passwords do not match.</p>}</div>
+        </form>
+      )}
+    </Modal>
   );
 }
 
@@ -192,7 +237,7 @@ function OfficerForm({
         {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         <div><label className="label" htmlFor="of-name">Full name</label><input id="of-name" className="input" value={form.name} onChange={set('name')} required minLength={2} /></div>
         <div><label className="label" htmlFor="of-email">Email</label><input id="of-email" type="email" className="input" value={form.email} onChange={set('email')} disabled={editing} required /></div>
-        {!editing && <div><label className="label" htmlFor="of-pass">Temporary password</label><input id="of-pass" type="password" className="input" value={form.password} onChange={set('password')} minLength={8} autoComplete="new-password" /><p className="mt-1 text-xs text-slate-500">At least 8 characters. Share it securely; the officer can change it via password reset.</p></div>}
+        {!editing && <div><label className="label" htmlFor="of-pass">Temporary password</label><input id="of-pass" type="password" className="input" value={form.password} onChange={set('password')} minLength={8} autoComplete="new-password" /><p className="mt-1 text-xs text-slate-500">At least 8 characters. Share it securely. You can change it later with Reset password.</p></div>}
         <div><label className="label" htmlFor="of-phone">Phone <span className="font-normal text-slate-400">(optional)</span></label><input id="of-phone" className="input" value={form.phone} onChange={set('phone')} /></div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="label" htmlFor="of-dept">Department</label>

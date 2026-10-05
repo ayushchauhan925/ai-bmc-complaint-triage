@@ -451,7 +451,7 @@ Every officer belongs to exactly **one department** (required, must exist and be
 
 - **Departments page:** all 20 departments with code, handled categories, active/total officers, open and critical complaints; search (name, code, description, category), Active/Inactive tabs, details dialog (primary + "also involved" categories, contacts), edit description/contact email/phone, CSV export.
 - **Deactivation guard:** deactivating a department that still has open complaints is **refused (409) unless a reassignment target** (an active, different department) is supplied. The move is one transaction: open complaints and open incidents move, their officer is cleared, each complaint gets a timeline event, and the action is audited. With no open complaints it deactivates immediately. Reactivation is a single click.
-- **Officers page:** Officer · Department · Ward · Active assignments · Critical assignments · SLA breaches · Status; department filter, search, add/edit. Moving an officer to another department, or deactivating one who has open assignments, returns 409 with the count unless `release_assignments` is set (assignments are then returned to the department queue).
+- **Officers page:** Officer · Department · Ward · Active assignments · Critical assignments · SLA breaches · Status; department filter, search, add/edit, **Reset password** (row menu). Moving an officer to another department, or deactivating one who has open assignments, returns 409 with the count unless `release_assignments` is set (assignments are then returned to the department queue).
 
 #### Seeding & migration
 
@@ -647,7 +647,7 @@ All routes are under `/api`, JSON, `Authorization: Bearer <jwt>`. Full request/r
 
 **Analytics (admin)** - `GET /analytics/recurring?days&radius` · `GET /analytics/effectiveness?window`
 
-**Departments & officers (admin)** - `GET /admin/departments/overview[?search&active]` · `PATCH /admin/departments/:id` (description, contacts, `is_active`, `reassign_to_department_id`) · `GET /admin/officers/overview[?search&department_id&status]` · `POST /admin/officers` · `PATCH /admin/officers/:id` (`department_id`, `ward_id`, `is_active`, `release_assignments`). `GET /admin/complaints/:id/recommend-officer` is now ward-aware.
+**Departments & officers (admin)** - `GET /admin/departments/overview[?search&active]` · `PATCH /admin/departments/:id` (description, contacts, `is_active`, `reassign_to_department_id`) · `GET /admin/officers/overview[?search&department_id&status]` · `POST /admin/officers` · `PATCH /admin/officers/:id` (`department_id`, `ward_id`, `is_active`, `release_assignments`) · `PATCH /admin/officers/:id/password` (`password`, min 8 chars - admin sets a new officer password). `GET /admin/complaints/:id/recommend-officer` is now ward-aware.
 
 **Extended existing** — `GET /incidents/:id` now includes `intelligence`; `GET /admin/complaints` accepts `sla_status, incident_id, officer_id, citizen, complaint_id, date_from, date_to, sort, order` (page size capped at 100); `GET /officer/complaints` accepts `priority_level, search, sort, order`; `GET /admin/audit-logs` accepts `search, order`; `PATCH /complaints/:id` now validates `category` against the enum; every response carries `X-Request-Id`.
 
@@ -991,7 +991,7 @@ it's baked in at build time, not read live.
 - **Text-only duplicate fallback** is weaker than the embedding path; it is deliberately stricter (must be within 150 m).
 - **Background jobs are in-process.** With multiple backend instances each would run them; set `ENABLE_BACKGROUND_JOBS=false` on all but one, or move to a real queue.
 - **Migrations on boot** are convenient for a single-instance deployment; for multi-instance production run `npm run migrate` as a release step and set `AUTO_MIGRATE=false`.
-- **Password reset needs email.** Without SMTP configured there is no self-service reset (the UI says so). There is no admin-issued reset link yet.
+- **Password reset needs email.** Without SMTP configured there is no self-service reset (the UI says so). Admins can set a new officer password directly (Officers -> row menu -> Reset password), which works without SMTP; there is no emailed admin-issued reset link, and existing sessions stay valid until their JWT expires.
 - **PDF and Devanagari:** embedding a Devanagari font is not enough - the PDF library cannot shape Indic conjuncts and vowel signs, so the text would render incorrectly. Complaint text in those scripts therefore appears as a placeholder in PDFs, with the English AI summary beside it. CSV exports keep the original text.
 - **Translations** cover the citizen-facing screens; staff/admin screens and the landing page are English. Hindi and Marathi strings were written for this project and should be reviewed by a native speaker before wide release.
 - **Web Push** depends on browser support and on you generating VAPID keys; it was unit-tested with the push service mocked, not against a real push service.

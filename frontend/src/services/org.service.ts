@@ -91,6 +91,10 @@ export async function updateOfficer(id: number, body: OfficerUpdate) {
   return res.data.data;
 }
 
+export async function changeOfficerPassword(id: number, password: string) {
+  await api.patch(`/admin/officers/${id}/password`, { password });
+}
+
 /** Extracts a structured API error detail such as { openComplaints } / { openAssignments }. */
 export function errorDetails(err: unknown): Record<string, number> | null {
   const d = (err as { response?: { data?: { details?: unknown } } })?.response?.data?.details;

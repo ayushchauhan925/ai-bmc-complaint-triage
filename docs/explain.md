@@ -395,7 +395,9 @@ that the department/officer are active and matched. The LLM is never involved.
   reassignment target is given**; the move is one transaction (complaints and incidents move,
   officer cleared, timeline events, audit entry).
 - **Officers page:** department, ward, active/critical assignments, SLA breaches, status; add
-  and edit; moving or deactivating an officer with open work returns 409 unless
+  and edit; **Reset password** (row menu: admin sets a new password with confirmation; the old one
+  can't be viewed because only a bcrypt hash is stored; lockout is cleared; audited as
+  `OFFICER_PASSWORD_CHANGED` without the password); moving or deactivating an officer with open work returns 409 unless
   `release_assignments` is set.
 
 ---
@@ -742,6 +744,7 @@ durable history lives in `ai_usage`, `job_runs` and `audit_logs`.
 | **Login lockout** | 5 wrong passwords lock the account for 15 minutes (a correct password during the lock is also refused); a reset clears it; lock events audited; responses never expose lockout fields |
 | **Password reset** | One-time, 1-hour email link; only a **SHA-256 hash** of the token is stored; a new link invalidates the old one; identical response for unknown emails (no account enumeration). Requires SMTP — without it the UI says so instead of offering a broken flow |
 | **Email verification** | Banner + `/verify-email`; never blocks use |
+| **Admin password reset (officers)** | Admin sets a new officer password from the Officers page (min 8 chars, confirmed). Works without SMTP; clears lockout; audit entry never contains the password. Existing sessions stay valid until their JWT expires |
 | **Deactivated accounts** | Cannot log in (403); existing tokens stop working next request |
 | **RBAC** | Enforced server-side on every route |
 | **Transport / headers** | Helmet, strict CORS |

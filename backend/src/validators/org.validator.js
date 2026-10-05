@@ -22,6 +22,10 @@ const officerUpdateSchema = z.object({
   release_assignments: z.boolean().optional(),
 });
 
+const officerPasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(100),
+});
+
 const departmentUpdateSchema = z.object({
   description: z.string().trim().min(3).max(500).optional(),
   contact_email: z.string().trim().email().max(190).nullable().optional().or(z.literal('').transform(() => null)),
@@ -31,4 +35,4 @@ const departmentUpdateSchema = z.object({
   reassign_to_department_id: optionalId,
 });
 
-module.exports = { officerCreateSchema, officerUpdateSchema, departmentUpdateSchema };
+module.exports = { officerCreateSchema, officerUpdateSchema, officerPasswordSchema, departmentUpdateSchema };

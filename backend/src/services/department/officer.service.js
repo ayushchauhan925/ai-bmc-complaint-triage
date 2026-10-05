@@ -92,4 +92,18 @@ async function updateOfficer(id, changes, actor) {
   return { officer: await userModel.findById(officer.id), released };
 }
 
-module.exports = { createOfficer, updateOfficer };
+/**
+ * Admin-issued password change for an officer. The old password is never shown (it is only stored as a hash);
+ * this replaces it and clears any login lockout. The audit record never contains the password itself.
+ */
+async function setOfficerPassword(id, password, actor) {
+  const officer = await userModel.findById(id);
+  if (!officer || officer.role !== ROLES.OFFICER) throw new AppError('Officer not found.', 404);
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await userModel.setPassword(officer.id, passwordHash); // also resets failed attempts + lockout
+  await auditService.record({ actor, action: 'OFFICER_PASSWORD_CHANGED', entityType: 'user', entityId: officer.id, next: { changedBy: actor?.id ?? null } });
+  return { id: officer.id };
+}
+
+module.exports = { createOfficer, updateOfficer, setOfficerPassword };

@@ -296,6 +296,47 @@ describe('admin: officer management', () => {
     expect((await request(app).patch(`/api/admin/officers/${officerId}`).set(auth(adminToken)).send({ department_id: 999999 })).status).toBe(404);
     expect((await request(app).patch('/api/admin/officers/999999').set(auth(adminToken)).send({ name: 'Nobody' })).status).toBe(404);
   });
+
+  test('admin can set an officer password: old one stops working, lockout is cleared, audit has no secret', async () => {
+    const email = `${uniq('pw')}@civicconnect.demo`;
+    const created = await newOfficer({ email });
+    const officerId = created.body.data.officer.id;
+    const NEW_PW = 'BrandNewPass#42';
+
+    for (let i = 0; i < 5; i += 1) await login(email, 'wrong-password');
+    expect((await login(email)).status).not.toBe(200); // locked out
+
+    const res = await request(app).patch(`/api/admin/officers/${officerId}/password`).set(auth(adminToken)).send({ password: NEW_PW });
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).not.toContain(NEW_PW);
+
+    expect((await login(email, NEW_PW)).status).toBe(200); // lockout cleared, new password works
+    expect((await login(email)).status).toBe(401); // old password rejected
+
+    const [logs] = await pool.query("SELECT * FROM audit_logs WHERE action = 'OFFICER_PASSWORD_CHANGED' AND entity_id = ?", [officerId]);
+    expect(logs.length).toBe(1);
+    expect(JSON.stringify(logs[0])).not.toContain(NEW_PW);
+  });
+
+  test('officer password change validates input, is admin-only and only targets officers', async () => {
+    const created = await newOfficer();
+    const officerId = created.body.data.officer.id;
+    const officerEmail = created.body.data.officer.email;
+    const route = (id) => `/api/admin/officers/${id}/password`;
+
+    expect((await request(app).patch(route(officerId)).set(auth(adminToken)).send({ password: 'short' })).status).toBe(400);
+    expect((await request(app).patch(route(officerId)).set(auth(adminToken)).send({})).status).toBe(400);
+    expect((await request(app).patch(route(999999)).set(auth(adminToken)).send({ password: 'ValidPass#123' })).status).toBe(404);
+    expect((await request(app).patch(route('abc')).set(auth(adminToken)).send({ password: 'ValidPass#123' })).status).toBe(400);
+    expect((await request(app).patch(route(officerId)).send({ password: 'ValidPass#123' })).status).toBe(401);
+
+    const officerToken = (await login(officerEmail)).body.data.token;
+    expect((await request(app).patch(route(officerId)).set(auth(officerToken)).send({ password: 'ValidPass#123' })).status).toBe(403);
+
+    const [[admin]] = await pool.query("SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1");
+    expect((await request(app).patch(route(admin.id)).set(auth(adminToken)).send({ password: 'ValidPass#123' })).status).toBe(404); // not an officer
+    expect((await login(officerEmail)).status).toBe(200); // untouched by the rejected attempts
+  });
 });
 
 describe('assignment rules and smart recommendations', () => {

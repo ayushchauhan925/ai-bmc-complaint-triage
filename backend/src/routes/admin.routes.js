@@ -9,7 +9,7 @@ const { validateBody } = require('../middleware/validate.middleware');
 const { assignSchema } = require('../validators/complaint.validator');
 const { aiSearchSchema } = require('../validators/intelligence.validator');
 const { evaluationSchema } = require('../validators/ops.validator');
-const { officerCreateSchema, officerUpdateSchema, departmentUpdateSchema } = require('../validators/org.validator');
+const { officerCreateSchema, officerUpdateSchema, officerPasswordSchema, departmentUpdateSchema } = require('../validators/org.validator');
 const { ROLES } = require('../utils/constants');
 
 const router = express.Router();
@@ -32,6 +32,7 @@ router.patch('/departments/:id', validateBody(departmentUpdateSchema), orgContro
 router.get('/officers/overview', orgController.officerOverview);
 router.post('/officers', validateBody(officerCreateSchema), orgController.createOfficer);
 router.patch('/officers/:id', validateBody(officerUpdateSchema), orgController.updateOfficer);
+router.patch('/officers/:id/password', validateBody(officerPasswordSchema), orgController.changeOfficerPassword);
 
 // Civic Intelligence Center (Section 10)
 router.get('/intelligence', intelligenceController.getIntelligence);
