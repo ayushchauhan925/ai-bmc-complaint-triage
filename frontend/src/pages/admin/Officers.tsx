@@ -48,7 +48,7 @@ export default function Officers() {
     { id: 'critical', header: 'Critical', hint: 'Open critical-priority complaints assigned', sortKey: 'critical', firstSort: 'desc', width: 'w-20', align: 'right', cell: (o) => <span className={o.criticalAssignments ? 'font-semibold text-red-700' : ''}>{o.criticalAssignments}</span> },
     { id: 'sla', header: 'SLA breaches', sortKey: 'sla', firstSort: 'desc', width: 'w-28', align: 'right', cell: (o) => <span className={o.slaBreaches ? 'font-semibold text-red-700' : ''}>{o.slaBreaches}{o.slaBreaches > 0 && ' ⚠'}</span> },
     { id: 'status', header: 'Status', sortKey: 'status', width: 'w-28', cell: (o) => <ActiveBadge active={o.isActive} /> },
-    { id: 'actions', header: '', width: 'w-20', align: 'right', locked: true, cell: (o) => <RowActions label={o.name} primary={{ label: 'Edit', onClick: () => setEditing(o) }} items={[{ label: 'Reset password', onClick: () => setResetting(o) }]} /> },
+    { id: 'actions', header: '', width: 'w-36', align: 'right', locked: true, cell: (o) => <RowActions label={o.name} primary={{ label: 'Edit', onClick: () => setEditing(o) }} items={[{ label: 'Reset password', onClick: () => setResetting(o) }]} /> },
   ];
 
   const refresh = () => {
@@ -135,7 +135,7 @@ export default function Officers() {
       <p className="mt-3 text-xs text-slate-500">Need to assign a complaint? Open it and use <em>Recommend officer</em> - rankings consider the officer&apos;s ward, workload, critical load, SLA breaches and proximity. You always make the final assignment. <Link to="/admin/departments" className="font-medium text-brand-600 hover:underline">Departments →</Link></p>
 
       <OfficerForm open={creating} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); refresh(); }} departments={departments.data ?? []} wards={wards.data ?? []} defaultDepartmentId={departmentId} />
-      <OfficerForm open={!!editing} officer={editing ?? undefined} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} departments={departments.data ?? []} wards={wards.data ?? []} />
+      <OfficerForm open={!!editing} officer={editing ?? undefined} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} onResetPassword={() => { setResetting(editing); setEditing(null); }} departments={departments.data ?? []} wards={wards.data ?? []} />
       <PasswordDialog officer={resetting} onClose={() => setResetting(null)} />
     </div>
   );
@@ -182,9 +182,9 @@ function PasswordDialog({ officer, onClose }: { officer: org.OfficerOverview | n
 }
 
 function OfficerForm({
-  open, officer, onClose, onSaved, departments, wards, defaultDepartmentId,
+  open, officer, onClose, onSaved, onResetPassword, departments, wards, defaultDepartmentId,
 }: {
-  open: boolean; officer?: org.OfficerOverview; onClose: () => void; onSaved: () => void;
+  open: boolean; officer?: org.OfficerOverview; onClose: () => void; onSaved: () => void; onResetPassword?: () => void;
   departments: { id: number; name: string; is_active?: boolean | number }[]; wards: { id: number; ward_name: string }[]; defaultDepartmentId?: string;
 }) {
   const editing = !!officer;
@@ -251,6 +251,12 @@ function OfficerForm({
               {wards.map((w) => <option key={w.id} value={w.id}>{w.ward_name}</option>)}
             </select></div>
         </div>
+        {editing && onResetPassword && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
+            <div><p className="text-sm font-medium text-slate-800">Password</p><p className="text-xs text-slate-500">Set a new password for this officer. The current one can&apos;t be viewed.</p></div>
+            <button type="button" className="btn-secondary shrink-0 text-xs" onClick={onResetPassword}>Reset password</button>
+          </div>
+        )}
         {editing && (
           <div className="rounded-lg border border-slate-200 p-3">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-800"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} /> Active</label>
