@@ -6,7 +6,7 @@
 
 **Sign in at:** https://ai-bmc-complaint-triage.vercel.app (the first request after idle can take 30–60 s while the API cold-starts).
 
-Each officer belongs to one department and sees only that department's complaints. There are 20 officers, one per department.
+Each officer belongs to one department and sees only that department's complaints. There are 28 officers: every department has at least one, and Roads, Water Supply, Solid Waste Management and Storm Water Drainage have three each (different wards) so the ranked officer recommendation has real choices.
 
 | Department | Code | Email (username) | Ward | Status |
 |---|---|---|---|---|
@@ -24,12 +24,20 @@ Each officer belongs to one department and sees only that department's complaint
 | Public Infrastructure | `PUBLIC_INFRASTRUCTURE` | `officer.public_infrastructure@civicconnect.demo` | Ward G (DEMO) | Active |
 | Public Toilets & Civic Amenities | `CIVIC_AMENITIES` | `officer.civic_amenities@civicconnect.demo` | Ward A (DEMO) | Active |
 | Roads & Traffic Infrastructure | `ROADS` | `officer.roads@civicconnect.demo` | Any | Active |
+| Roads & Traffic Infrastructure | `ROADS` | `officer.roads2@civicconnect.demo` | Ward H (DEMO) | Active |
+| Roads & Traffic Infrastructure | `ROADS` | `officer.roads3@civicconnect.demo` | Ward C (DEMO) | Active |
 | Sewerage | `SEWERAGE` | `officer.sewerage@civicconnect.demo` | Ward C (DEMO) | Active |
 | Solid Waste Management | `SOLID_WASTE` | `officer.solid_waste@civicconnect.demo` | Any | Active |
+| Solid Waste Management | `SOLID_WASTE` | `officer.solid_waste2@civicconnect.demo` | Ward F (DEMO) | Active |
+| Solid Waste Management | `SOLID_WASTE` | `officer.solid_waste3@civicconnect.demo` | Ward A (DEMO) | Active |
 | Storm Water Drainage | `DRAINAGE` | `officer.drainage@civicconnect.demo` | Any | Active |
+| Storm Water Drainage | `DRAINAGE` | `officer.drainage2@civicconnect.demo` | Ward B (DEMO) | Active |
+| Storm Water Drainage | `DRAINAGE` | `officer.drainage3@civicconnect.demo` | Ward E (DEMO) | Active |
 | Street Lighting & Electrical Infrastructure | `ELECTRICAL` | `officer.electrical@civicconnect.demo` | Any | Active |
 | Traffic Management / Signals | `TRAFFIC` | `officer.traffic@civicconnect.demo` | Any | Active |
 | Water Supply | `WATER` | `officer.water@civicconnect.demo` | Any | Active |
+| Water Supply | `WATER` | `officer.water2@civicconnect.demo` | Ward D (DEMO) | Active |
+| Water Supply | `WATER` | `officer.water3@civicconnect.demo` | Ward G (DEMO) | Active |
 
 ## Other demo accounts
 
