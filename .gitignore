@@ -33,3 +33,6 @@ coverage/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+
+# Local demo images (large; not committed)
+docs/sample_complaints/
