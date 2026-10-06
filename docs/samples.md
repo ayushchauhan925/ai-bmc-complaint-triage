@@ -1,6 +1,6 @@
 # Sample Complaints and Image Prompts for the Demo
 
-Ready-to-use test data: **7 complaints from 7 different departments**. Each has the text to type,
+Ready-to-use test data: **8 complaints from 8 different departments**. Each has the text to type,
 a map location, what the system should do with it, a **"before" image prompt** (what the citizen
 uploads) and an **"after" image prompt** (what the officer uploads after fixing it).
 
@@ -13,7 +13,7 @@ uploads) and an **"after" image prompt** (what the officer uploads after fixing 
 1. [How to use this file](#1-how-to-use-this-file)
 2. [Tips for good demo images](#2-tips-for-good-demo-images)
 3. [Quick reference table](#3-quick-reference-table)
-4. [The 7 sample complaints](#4-the-7-sample-complaints)
+4. [The 8 sample complaints](#4-the-8-sample-complaints)
 5. [Bonus test cases](#5-bonus-test-cases)
 6. [Fake and suspicious cases that should be flagged](#6-fake-and-suspicious-cases-that-should-be-flagged)
 7. [Suggested demo order](#7-suggested-demo-order)
@@ -67,14 +67,15 @@ Add this suffix to any prompt below if the result looks too polished:
 | 5 | Broken streetlight | Street Lighting & Electrical | Medium | English | 19.1136, 72.8697 |
 | 6 | Fallen tree on a road | Gardens & Tree Management | High | English | 19.0596, 72.8295 |
 | 7 | Sewage overflow on a street | Sewerage | High | English | 19.0330, 72.8570 |
+| 8 | Fire in a row of shops | Disaster / Emergency Response | Critical / High | English | 19.0990, 72.8340 |
 
 Officers to use (from [`passwords.md`](passwords.md)): `officer.roads@…`, `officer.solid_waste@…`,
 `officer.water@…`, `officer.drainage@…`, `officer.electrical@…`, `officer.gardens@…`,
-`officer.sewerage@…`.
+`officer.sewerage@…`, `officer.emergency_response@…`.
 
 ---
 
-## 4. The 7 sample complaints
+## 4. The 8 sample complaints
 
 ### Sample 1 — Pothole near a school (Roads)
 
@@ -274,6 +275,42 @@ manhole cover reseated. Area washed and disinfected."
 
 ---
 
+### Sample 8 — Fire in a row of shops (Disaster / Emergency Response)
+
+**Complaint text (English):**
+> A fire has broken out in a row of shops near the market and thick black smoke is spreading across
+> the street. Flames are coming out of one shop and the lane is blocked by parked vehicles, so fire
+> engines will not be able to get through. Please send help immediately.
+
+- **Location:** 19.0990, 72.8340. **Landmark:** "Main market road, next to the bus stop".
+- **What should happen:** category *Major fire*, department **Disaster / Emergency Response** with
+  **Disaster Management** shown as *also involved*. The **emergency access blocked** signal triggers
+  the safety floor (priority at least **High**), and the AI will usually rate urgency *immediate*, so
+  expect **Critical / High**. With a clear photo the evidence is strong enough for the urgency to be
+  honoured; with no photo it is likely to carry a **"verify before dispatch"** review flag.
+- **Demo value:** the best sample for showing the safety floor and the "AI proposes, rules decide"
+  story, because a fire should never be left waiting in a queue.
+
+**Before image prompt (citizen uploads):**
+> Photo of a fire in one shopfront in a row of shops on a busy Indian market street, orange flames
+> and thick dark smoke coming out of an open shutter, neighbouring shops intact, a few parked
+> scooters and a handcart in the lane in front, hazy evening light, shot from about fifteen metres
+> away at standing height from across the road. Candid smartphone photo, no text, no faces, no
+> people near the flames.
+
+**Officer's fix note:** "Fire brigade attended and extinguished the fire, area cooled down and made
+safe. Charred shutter and debris cleared, the lane reopened to traffic, and the fire safety team
+informed for inspection."
+
+**After image prompt (officer uploads):**
+> The same market street and the same camera angle fifteen metres away, now with the fire fully out:
+> the shop shutter blackened and partly burnt, wet soot-stained pavement and puddles from the hoses,
+> a little debris stacked neatly at the side, no flames and no smoke, the neighbouring shops and
+> the same scooters and handcart in the background, clear evening light. Candid smartphone photo,
+> no text, no faces.
+
+---
+
 ## 5. Bonus test cases
 
 Use these to show specific features. They do not need the image prompts above.
@@ -380,12 +417,12 @@ strong Gaussian blur, or use this prompt:
 1. **Sample 1** (pothole near a school) end to end: submit, duplicate warning, AI result, assign,
    officer fix with after photo, approve, feedback. This is the core story.
 2. **Duplicate / incident** bonus case: shows the incident and the hotspot starting to form.
-3. **Samples 2–7** pre-loaded before the demo (submit them earlier from different citizens) so the
+3. **Samples 2–8** pre-loaded before the demo (submit them earlier from different citizens) so the
    **map, hotspots, workload and analytics** are populated across seven departments. Fix one or two
    of them so the SLA and resolution numbers look alive.
 4. **Prompt injection** bonus case: 30 seconds on safety and the review queue.
 5. Close on the **audit log** and **AI & system** pages.
 
-> Tip: submit Samples 2–7 at least a few minutes before judging so they have finished their AI
+> Tip: submit Samples 2–8 at least a few minutes before judging so they have finished their AI
 > analysis. Each submission calls the AI, so the first request after idle can take 30–60 seconds
 > on the free hosting tier.
