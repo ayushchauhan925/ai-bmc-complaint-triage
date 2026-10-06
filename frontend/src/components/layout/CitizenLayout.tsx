@@ -5,12 +5,13 @@ import { useI18n } from '../../i18n';
 import { VerifyEmailBanner } from '../common/VerifyEmailBanner';
 import { Footer } from './Footer';
 import { Sidebar, MobileNav } from './Sidebar';
-import { HomeIcon, PlusCircleIcon, ClipboardIcon, UserIcon } from '../common/Icons';
+import { HomeIcon, PlusCircleIcon, ClipboardIcon, UserIcon, CheckCircleIcon } from '../common/Icons';
 
 const buildLinks = (t: (k: string) => string) => [
   { to: '/', label: t('nav.home'), icon: <HomeIcon size={18} />, end: true },
   { to: '/complaints/new', label: t('nav.report'), icon: <PlusCircleIcon size={18} /> },
   { to: '/my-complaints', label: t('nav.myComplaints'), icon: <ClipboardIcon size={18} /> },
+  { to: '/resolved', label: t('nav.resolved'), icon: <CheckCircleIcon size={18} /> },
   { to: '/profile', label: t('nav.profile'), icon: <UserIcon size={18} /> },
 ];
 

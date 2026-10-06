@@ -40,6 +40,7 @@ import IntelligenceCenter from './pages/admin/IntelligenceCenter';
 import { OfficerLayout } from './components/layout/OfficerLayout';
 import OfficerDashboard from './pages/officer/Dashboard';
 import OfficerAllComplaints from './pages/officer/AllComplaints';
+const CitizenResolved = lazy(() => import('./pages/citizen/Resolved'));
 const FieldView = lazy(() => import('./pages/officer/FieldView'));
 
 function RootRedirect() {
@@ -78,6 +79,7 @@ export default function App() {
       >
         <Route path="/complaints/new" element={<SubmitComplaint />} />
         <Route path="/my-complaints" element={<MyComplaints />} />
+        <Route path="/resolved" element={<Suspense fallback={<PageLoader />}><CitizenResolved /></Suspense>} />
       </Route>
 
       <Route

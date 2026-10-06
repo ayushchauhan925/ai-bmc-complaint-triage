@@ -25,7 +25,7 @@ A complete, role-by-role list of what each kind of user can do in Civic Connect:
 
 | Role | Who | Scope | Lands on | Navigation |
 |---|---|---|---|---|
-| **Citizen** | Resident reporting civic issues | Own complaints only | `/` (Home) | Home · Report · My complaints · Profile |
+| **Citizen** | Resident reporting civic issues | Own complaints only | `/` (Home) | Home · Report · My complaints · Resolved · Profile |
 | **Officer** | Department staff (one department, optional ward) | Their department's complaints | `/officer` | Assigned · Field view · All complaints · Profile |
 | **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Approvals · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
 
@@ -89,6 +89,15 @@ a role takes effect immediately.
 ### 4.3 My complaints (`/my-complaints`)
 - List of all the citizen's complaints with status, category, priority and dates.
 - Open any complaint for full details.
+
+### 4.3b Resolved (`/resolved`)
+A separate page listing only the citizen's complaints that an **admin has marked Resolved**, newest first.
+- Each card shows the complaint number, title, address, priority and category.
+- **Resolved on**, **Reported on** and **Time taken** figures.
+- The **before and after photos**, so the citizen can check the fix themselves.
+- **View details & give feedback** opens the complaint page (feedback form).
+- **Report issue not actually resolved** reopens it, with a reason and an optional photo; it then leaves this list.
+- Available in English, Hindi and Marathi. *My complaints* still has a Resolved tab for quick filtering.
 
 ### 4.4 Complaint page (`/complaints/:id`) — citizen view
 | Panel | What the citizen sees |
