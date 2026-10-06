@@ -319,8 +319,9 @@ score**, and each one shows off a different part of the system. Submit both as a
 `aniruddha.bane@example.demo`) with the matching **before** photo, then follow the officer and admin steps.
 
 > Why these two: **Showcase A** shows safety signals, risk indicators and why priority is not just the AI's
-> opinion. **Showcase B** shows deterministic routing to a primary department with a **secondary department
-> "also involved"**, plus a public-health signal. Together they cover most of the pipeline in about two minutes.
+> opinion. **Showcase B** shows the **safety floor**: a fire with emergency access blocked can never be left at a
+> low priority, whatever the model says, and the complaint is routed to a primary department with a **secondary
+> department "also involved"**. Together they cover most of the pipeline in about two minutes.
 
 ### Showcase A: Exposed live wire near a school bus stop (Street Lighting & Electrical)
 
@@ -365,43 +366,55 @@ secured to the pole, joints taped and tested. Area checked and cleared for pedes
 
 ---
 
-### Showcase B: Dead animal on a market lane (Animal Management, with Public Health also involved)
+### Showcase B: Fire in a residential building (Disaster / Emergency Response)
 
 **Complaint text (English):**
-> A dead dog has been lying on the lane next to the vegetable market since last night and it has started to smell
-> badly. Flies are collecting on it and shoppers have to walk around it. The lane is narrow and food stalls are
-> only a few metres away, so this is a health risk. Please remove the carcass and disinfect the area today.
+> Fire has broken out on the ground floor of our six-storey residential building, in the parking and meter room,
+> and black smoke is going up the staircase. About 60 families live here and many are still inside. The lane to
+> our gate is very narrow and is blocked by parked cars on both sides, so the fire brigade will not be able to
+> bring its engine in. Please send fire engines and ask for the cars to be cleared immediately.
 
-- **Location:** 19.0400, 72.9200. **Landmark to type:** "Lane beside the vegetable market, behind the bus depot".
-- **Why it is a good demo:** it shows that **one department owns the complaint while another is shown as
-  "also involved"**, which is deterministic routing and not a guess by the AI.
+- **Location:** 19.0400, 72.9200. **Landmark to type:** "Sunrise Heights, lane behind the bus depot".
+- **Why it is a good demo:** the text contains an **emergency access blocked** signal and a large number of people
+  at risk. That triggers the **safety floor**, so the priority can never fall below High regardless of what the
+  model says. It is a clear example of "AI proposes, rules decide".
 - **What should happen (likely):**
-  - Category *Dead animal*, primary department **Animal Management**, with **Public Health & Sanitation** shown
-    as *also involved* on the complaint timeline.
-  - A *public health risk* signal, priority **Medium or High**, and a strong evidence score with a clear photo.
+  - Category *Major fire*, primary department **Disaster / Emergency Response**, with **Disaster Management**
+    shown as *also involved* on the complaint timeline.
+  - Severity signals for *emergency access blocked*, *multiple people affected* and a *safety risk*; urgency
+    *Immediate*.
+  - Priority **High or Critical** (floor: at least High). With a clear photo the urgency is honoured; without a
+    photo expect a **"verify before dispatch"** review flag, and the priority is not silently lowered.
+  - The complaint should appear near the top of the officer queue and in the admin's critical list.
 
 **What to point out to the judges**
-1. Open the timeline entry **"Assigned to Animal Management"** and show the *also involved* department.
-2. Say: "The AI only supplied the category. A fixed table chose the owner and the second department, so the
-   result is the same every time and can be audited."
-3. Optional: edit the department in the admin review panel and show the SLA recalculating.
+1. The **severity signals** the AI raised, then the **priority reasons** showing the safety floor as a rule.
+2. Say: "Even if the model had underrated this, the rule 'emergency access blocked means at least High' would
+   still apply. The AI cannot lower a safety floor."
+3. Open the timeline entry **"Assigned to Disaster / Emergency Response"** and show the *also involved*
+   department. Say: "A fixed table chose the owner and the second department, so the result is the same every
+   time and can be audited."
+4. Compare with Sample 8 (fire in a row of shops): both are fires, but this one shows people at risk and blocked
+   access.
 
 **Before image prompt (citizen uploads):**
-> Photo of a dead stray dog lying at the edge of a narrow lane next to an Indian vegetable market, a few flies
-> near it, vegetable stalls with crates and umbrellas a few metres away in the background, a handcart parked
-> nearby, harsh midday light, shot from about four metres away, slightly angled down. Candid smartphone photo,
-> no text, no faces, not graphic, no visible blood.
+> Photo of a fire at the ground floor of a six-storey residential apartment building in an Indian city, smoke
+> and orange flames coming from the parking area and meter room, dark smoke rising along the front of the
+> building, a narrow lane in front with cars parked closely on both sides, evening light, shot from about
+> twenty metres away at standing height. Candid smartphone photo, no text, no faces, no people near the flames.
 
-**Officer's fix note:** "Carcass removed in a sealed bag by the animal-management van, taken for disposal. Area
-washed and disinfected with bleaching powder. Public health team informed."
+**Officer's fix note:** "Fire brigade reached after the parked vehicles were cleared from the lane, and the fire
+in the meter room was extinguished. Building checked and declared safe, electrical supply to the meter room
+isolated, residents informed. Fire safety team asked to inspect the building."
 
 **After image prompt (officer uploads):**
-> The same market lane and the same camera angle four metres away, now clear: the ground washed and mostly dry,
-> a light patch of white disinfectant powder where the animal was, the same stalls, crates and handcart in the
-> background, same midday light. Candid smartphone photo, no text, no faces.
+> The same apartment building and the same camera angle twenty metres away, now with the fire fully out: the
+> ground-floor parking and meter room blackened with soot, wet pavement and puddles from the hoses, the narrow
+> lane now clear of parked cars, no flames and no smoke, the upper floors intact, calm evening light. Candid
+> smartphone photo, no text, no faces.
 
 **Officers to use:** `officer.electrical@civicconnect.demo` for Showcase A and
-`officer.animal_management@civicconnect.demo` for Showcase B (see [`passwords.md`](passwords.md)).
+`officer.emergency_response@civicconnect.demo` for Showcase B (see [`passwords.md`](passwords.md)).
 
 ---
 
