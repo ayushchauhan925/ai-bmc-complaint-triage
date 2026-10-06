@@ -26,7 +26,7 @@ A complete, role-by-role list of what each kind of user can do in Civic Connect:
 | Role | Who | Scope | Lands on | Navigation |
 |---|---|---|---|---|
 | **Citizen** | Resident reporting civic issues | Own complaints only | `/` (Home) | Home · Report · My complaints · Resolved · Profile |
-| **Officer** | Department staff (one department, optional ward) | Their department's complaints | `/officer` | Assigned · Field view · All complaints · Profile |
+| **Officer** | Department staff (one department, optional ward) | Their department's complaints | `/officer` | Assigned · Field view · All complaints · Outcomes · Profile |
 | **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Resolutions · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
 
 Authorisation is enforced on the **server** for every route; the frontend only hides what a role
@@ -155,6 +155,15 @@ department's complaints.
 - One-tap **Accept** / **Start work**.
 - Turn-by-turn **Navigate** hand-off to the maps app.
 
+### 5.3b Outcomes (`/officer/outcomes`)
+Shows where the officer's fixes ended up, with a live count on every tab. A selector switches between **My complaints** and the **Whole department**.
+- **Solved (citizen confirmed):** approved by an admin *and* confirmed as really fixed by the citizen. These are the successfully solved complaints.
+- **Approved by admin:** everything an admin marked Resolved, with the citizen's response (confirmed with stars and comment, or still awaiting).
+- **Awaiting approval:** fixes submitted and waiting for an admin decision, with the officer's note.
+- **Sent back:** fixes an admin sent back for more work, with the **admin's note** saying what to fix.
+- **Awaiting citizen:** approved, but the citizen has not answered yet.
+- **Citizen: not resolved:** the citizen said the problem was not fixed, so it was reopened. Shows their reason, when, and the status now.
+
 ### 5.4 Complaint page (`/complaints/:id`) — staff view
 Everything the citizen sees, plus:
 
@@ -169,6 +178,7 @@ Everything the citizen sees, plus:
 | **Related complaints** | Duplicate/related suggestions with probability and indicators; **link** or **not related** actions. |
 | **Incident link** | The incident this complaint belongs to, if any. |
 | **Unified timeline** | Status history plus AI, evidence, priority, department, duplicate, incident, review, SLA and escalation events, with icons. |
+| **Citizen feedback** | Once the complaint is Resolved, shows whether the citizen confirmed it (with stars and comment) or that the citizen has not answered yet. |
 | **Staff review panel** | Approve / correct / false-positive / confirm or reject duplicate (own department only). |
 | **Export PDF** | AI assessment, evidence score, decision factors and internal timeline. |
 

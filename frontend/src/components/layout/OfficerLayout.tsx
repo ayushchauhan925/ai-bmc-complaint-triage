@@ -5,12 +5,13 @@ import { useI18n } from '../../i18n';
 import { VerifyEmailBanner } from '../common/VerifyEmailBanner';
 import { Footer } from './Footer';
 import { Sidebar, MobileNav } from './Sidebar';
-import { HomeIcon, ClipboardIcon, UserIcon, LocationIcon } from '../common/Icons';
+import { HomeIcon, ClipboardIcon, UserIcon, LocationIcon, CheckCircleIcon } from '../common/Icons';
 
 const buildLinks = (t: (k: string) => string) => [
   { to: '/officer', label: t('nav.assigned'), icon: <HomeIcon size={18} />, end: true },
   { to: '/officer/field', label: t('nav.fieldView'), icon: <LocationIcon size={18} /> },
   { to: '/officer/all', label: t('nav.allComplaints'), icon: <ClipboardIcon size={18} /> },
+  { to: '/officer/outcomes', label: t('nav.outcomes'), icon: <CheckCircleIcon size={18} /> },
   { to: '/profile', label: t('nav.profile'), icon: <UserIcon size={18} /> },
 ];
 

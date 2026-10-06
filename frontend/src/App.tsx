@@ -42,6 +42,7 @@ import OfficerDashboard from './pages/officer/Dashboard';
 import OfficerAllComplaints from './pages/officer/AllComplaints';
 const CitizenResolved = lazy(() => import('./pages/citizen/Resolved'));
 const FieldView = lazy(() => import('./pages/officer/FieldView'));
+const OfficerOutcomes = lazy(() => import('./pages/officer/Outcomes'));
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/officer" element={<OfficerDashboard />} />
         <Route path="/officer/all" element={<OfficerAllComplaints />} />
         <Route path="/officer/field" element={<Suspense fallback={<PageLoader />}><FieldView /></Suspense>} />
+        <Route path="/officer/outcomes" element={<Suspense fallback={<PageLoader />}><OfficerOutcomes /></Suspense>} />
       </Route>
 
       {/* Shared complaint detail + profile, reachable by any authenticated role via their own layout */}

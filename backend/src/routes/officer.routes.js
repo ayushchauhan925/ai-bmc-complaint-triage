@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(authMiddleware, roleMiddleware(ROLES.OFFICER));
 
 router.get('/complaints', officerController.listAssigned);
+router.get('/resolutions', officerController.resolutions);
 router.patch('/complaints/:id/accept', officerController.accept);
 router.patch('/complaints/:id/start', officerController.start);
 router.post('/complaints/:id/resolution-image', upload.single('image'), verifyImageContent, officerController.uploadResolutionImage);

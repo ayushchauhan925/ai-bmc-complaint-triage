@@ -9,6 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { COMPLAINT_STATUS } = require('../utils/constants');
+const resolutionOverview = require('../services/admin/resolutionOverview.service');
 
 const listAssigned = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status, priority_level, search, sort, order } = req.query;
@@ -123,4 +124,17 @@ const getAiAssistance = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { checklist: result.checklist, cached: false } });
 });
 
-module.exports = { listAssigned, accept, start, uploadResolutionImage, resolve, getAiAssistance };
+// Outcomes of the officer's resolutions: waiting for approval, sent back, approved, and what the citizen said.
+// scope=mine (default) is this officer's own complaints; scope=department is the whole department.
+const resolutions = asyncHandler(async (req, res) => {
+  const { view, limit, scope } = req.query;
+  const departmentWide = scope === 'department' && req.user.department_id;
+  const data = await resolutionOverview.overview({
+    view: typeof view === 'string' ? view : undefined,
+    limit,
+    scope: departmentWide ? { departmentId: req.user.department_id } : { officerId: req.user.id },
+  });
+  res.status(200).json({ success: true, data });
+});
+
+module.exports = { listAssigned, accept, start, uploadResolutionImage, resolve, getAiAssistance, resolutions };

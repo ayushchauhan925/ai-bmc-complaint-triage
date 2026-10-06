@@ -1,6 +1,13 @@
 import { api } from './api';
 import type { ApiResponse, Complaint, OfficerChecklist, PaginatedResponse, ResolutionVerification } from '../utils/types';
 import type { ComplaintFilters } from './complaint.service';
+import type { ResolutionOverview, ResolutionView } from './admin.service';
+
+/** Outcomes of this officer's resolutions: approval status from the admin and the citizen's response. */
+export async function getMyResolutions(view: ResolutionView, scope: 'mine' | 'department' = 'mine') {
+  const res = await api.get<ApiResponse<ResolutionOverview>>('/officer/resolutions', { params: { view, scope, limit: 200 } });
+  return res.data.data;
+}
 
 export async function listAssigned(filters: ComplaintFilters = {}) {
   const res = await api.get<ApiResponse<PaginatedResponse<Complaint>>>('/officer/complaints', { params: filters });

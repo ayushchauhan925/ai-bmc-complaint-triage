@@ -15,7 +15,7 @@ export async function assignComplaint(id: number | string, department_id: number
   return res.data.data.complaint;
 }
 
-export type ResolutionView = 'approved' | 'confirmed' | 'awaiting-feedback' | 'not-resolved';
+export type ResolutionView = 'awaiting-approval' | 'sent-back' | 'approved' | 'confirmed' | 'awaiting-feedback' | 'not-resolved';
 
 export interface ResolutionRow {
   id: number;
@@ -32,11 +32,13 @@ export interface ResolutionRow {
   resolved_at: string | null;
   feedback: { resolved: boolean; rating: number | null; comment: string | null; created_at: string } | null;
   reopen: { reason: string | null; created_at: string } | null;
+  /** When the fix was submitted (awaiting-approval) or sent back (sent-back), with the note. */
+  event: { at: string; note: string | null } | null;
 }
 
 export interface ResolutionOverview {
   view: ResolutionView;
-  counts: { approved: number; confirmed: number; awaitingFeedback: number; notResolved: number; notResolvedComplaints: number };
+  counts: { awaitingApproval: number; sentBack: number; approved: number; confirmed: number; awaitingFeedback: number; notResolved: number; notResolvedComplaints: number };
   rows: ResolutionRow[];
 }
 
