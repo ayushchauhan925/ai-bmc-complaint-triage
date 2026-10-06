@@ -165,7 +165,7 @@ export function AdminActions({
           <option value="">Unassigned</option>
           {availableOfficers.map((o) => (
             <option key={o.id} value={o.id}>
-              {o.name}
+              {o.name} ({o.email})
             </option>
           ))}
         </select>
@@ -188,7 +188,7 @@ export function AdminActions({
                   <span className="font-medium text-slate-800">
                     <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600">{r.rank ?? i + 1}</span>
                     {i === 0 && <span className="mr-1 text-green-600" title="Top recommendation">★</span>}
-                    {r.name}
+                    {r.name} <span className="font-normal text-slate-500">({r.email})</span>
                   </span>
                   <span className="flex shrink-0 gap-1">
                     {r.wardMatch && <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-800">Same ward</span>}
