@@ -33,6 +33,7 @@ export function AdminActions({
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [recommendations, setRecommendations] = useState<OfficerRecommendation[] | null>(null);
   const [recommending, setRecommending] = useState(false);
 
@@ -49,9 +50,17 @@ export function AdminActions({
     if (!departmentId) return;
     setBusy(true);
     setError('');
+    setSuccess('');
     try {
       const updated = await adminService.assignComplaint(complaint.id, Number(departmentId), officerId ? Number(officerId) : undefined);
       onUpdated(updated);
+      const officer = officerId ? officers.find((o) => o.id === Number(officerId)) : undefined;
+      const department = departments.find((d) => d.id === Number(departmentId));
+      setSuccess(
+        officer
+          ? `Complaint successfully assigned to ${officer.name} (${officer.email}).`
+          : `Complaint successfully assigned to ${department?.name ?? 'the department'} (no officer selected, it stays in the department queue).`
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -63,6 +72,7 @@ export function AdminActions({
     if (!nextStatus) return;
     setBusy(true);
     setError('');
+    setSuccess('');
     try {
       const updated = await complaintService.updateComplaintStatus(complaint.id, nextStatus, notes);
       onUpdated(updated);
@@ -117,7 +127,7 @@ export function AdminActions({
   return (
     <div className="card space-y-4 p-4">
       <h3 className="text-sm font-semibold text-slate-800">Admin actions</h3>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {complaint.review_required && (
         <div className="rounded-lg border border-pink-200 bg-pink-50 p-3">
@@ -204,6 +214,7 @@ export function AdminActions({
       <button disabled={busy || !departmentId} onClick={runReassign} className="btn-secondary w-full">
         Save assignment
       </button>
+      {success && <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">✓ {success}</p>}
 
       {statusOptions.length > 0 && (
         <div className="border-t border-slate-100 pt-4">
