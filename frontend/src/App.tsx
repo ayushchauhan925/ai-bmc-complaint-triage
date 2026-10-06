@@ -31,6 +31,7 @@ const AuditLog = lazy(() => import('./pages/admin/AuditLog'));
 const Recurring = lazy(() => import('./pages/admin/Recurring'));
 const Departments = lazy(() => import('./pages/admin/Departments'));
 const Officers = lazy(() => import('./pages/admin/Officers'));
+const Approvals = lazy(() => import('./pages/admin/Approvals'));
 import AdminIncidents from './pages/admin/Incidents';
 import AdminIncidentDetails from './pages/admin/IncidentDetails';
 import AdminReviewQueue from './pages/admin/ReviewQueue';
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/admin/incidents" element={<AdminIncidents />} />
         <Route path="/admin/incidents/:id" element={<AdminIncidentDetails />} />
         <Route path="/admin/review" element={<AdminReviewQueue />} />
+        <Route path="/admin/approvals" element={<Approvals />} />
         <Route path="/admin/operations" element={<Operations />} />
         <Route path="/admin/sla" element={<SlaEscalations />} />
         <Route path="/admin/ai" element={<AiSystem />} />

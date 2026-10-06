@@ -117,7 +117,7 @@ an after-photo, the admin approves, and the citizen has the last word.
 6. Upload an **"after" photo**, add a note, click **Mark resolution submitted**.
    - The **AI before/after verification** result appears (`SUPPORTED` / `UNCERTAIN` /
      `NOT_SUPPORTED`). *Say:* "Advisory again. A human approves the final resolution."
-7. **Admin:** open the complaint and **Approve** the resolution (status → `RESOLVED`).
+7. **Admin:** open **Approvals** in the sidebar. The complaint is listed with the before and after photos and the AI check. Click **Approve resolution** (status → `RESOLVED`).
 8. **Citizen A:** the complaint now shows a **feedback form**.
    - Answer **"Not resolved"** with a comment.
    - The complaint **reopens automatically** (`RESOLVED → REOPENED → ASSIGNED`) and is back in the

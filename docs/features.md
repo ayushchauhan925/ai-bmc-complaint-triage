@@ -27,7 +27,7 @@ A complete, role-by-role list of what each kind of user can do in Civic Connect:
 |---|---|---|---|---|
 | **Citizen** | Resident reporting civic issues | Own complaints only | `/` (Home) | Home · Report · My complaints · Profile |
 | **Officer** | Department staff (one department, optional ward) | Their department's complaints | `/officer` | Assigned · Field view · All complaints · Profile |
-| **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
+| **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Approvals · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
 
 Authorisation is enforced on the **server** for every route; the frontend only hides what a role
 can't use. The user record is re-checked on each request, so deactivating an account or changing
@@ -235,7 +235,14 @@ Admins have global scope. The sidebar groups these pages:
   breached count, next deadline, escalations.
 - **Merge** one incident into another; **Export PDF**.
 
-### 6.6 Review queue (`/admin/review`)
+### 6.6 Resolution approvals (`/admin/approvals`)
+- Lists every complaint whose officer has **submitted a resolution** and is waiting for an admin decision (oldest first).
+- Each card shows the complaint, who submitted the fix and when (with their note), the **before and after photos**, and the **AI before/after check** (`SUPPORTED` / `UNCERTAIN` / `NOT_SUPPORTED`, advisory only).
+- **Approve resolution** sets the status to *Resolved*; the citizen is then asked for feedback.
+- **Send back to officer** sets the status back to *In progress* and requires a short reason.
+- Confirmation message after each decision; **Open full complaint** for the complete record. The same change is still possible from the complaint page under *Change status*.
+
+### 6.6b Review queue (`/admin/review`)
 - Every complaint flagged for human review, with **why** it was flagged.
 - Quick **Approve**; inspect-and-decide for corrections, false positives and duplicates.
 
