@@ -14,9 +14,10 @@ uploads) and an **"after" image prompt** (what the officer uploads after fixing 
 2. [Tips for good demo images](#2-tips-for-good-demo-images)
 3. [Quick reference table](#3-quick-reference-table)
 4. [The 8 sample complaints](#4-the-8-sample-complaints)
-5. [Bonus test cases](#5-bonus-test-cases)
-6. [Fake and suspicious cases that should be flagged](#6-fake-and-suspicious-cases-that-should-be-flagged)
-7. [Suggested demo order](#7-suggested-demo-order)
+5. [Two showcase complaints for the judges](#5-two-showcase-complaints-for-the-judges)
+6. [Bonus test cases](#6-bonus-test-cases)
+7. [Fake and suspicious cases that should be flagged](#7-fake-and-suspicious-cases-that-should-be-flagged)
+8. [Suggested demo order](#8-suggested-demo-order)
 
 ---
 
@@ -311,7 +312,100 @@ informed for inspection."
 
 ---
 
-## 5. Bonus test cases
+## 5. Two showcase complaints for the judges
+
+If you only have time for **two** complaints, use these. They are written to produce a **strong evidence
+score**, and each one shows off a different part of the system. Submit both as a citizen (for example
+`aniruddha.bane@example.demo`) with the matching **before** photo, then follow the officer and admin steps.
+
+> Why these two: **Showcase A** shows safety signals, risk indicators and why priority is not just the AI's
+> opinion. **Showcase B** shows deterministic routing to a primary department with a **secondary department
+> "also involved"**, plus a public-health signal. Together they cover most of the pipeline in about two minutes.
+
+### Showcase A: Exposed live wire near a school bus stop (Street Lighting & Electrical)
+
+**Complaint text (English):**
+> A thick electric cable has snapped from a pole and is hanging very low over the footpath, right next to the
+> school bus stop. The ends are exposed and sparking when the wind blows, and it has been raining since morning.
+> Around 40 children wait at this stop at 7:30 every day, and the footpath below the wire is wet. Please
+> disconnect the supply and fix the cable urgently before someone gets electrocuted.
+
+- **Location:** 19.1180, 72.9060. **Landmark to type:** "School bus stop, opposite the main gate of the primary school".
+- **Why it is a good demo:** it is detailed (who, where, how long, what the danger is), has a clear photo and a
+  precise landmark, so the **evidence score should come out Strong**. The text triggers several signals at once.
+- **What should happen (likely):**
+  - Category *Exposed electrical wiring*, department **Street Lighting & Electrical**.
+  - Severity signals for *near school*, *multiple people affected*, *traffic or pedestrian hazard* and an
+    *electrical or safety risk*; urgency *High* or *Immediate*.
+  - Priority **High or Critical**. The evidence is strong enough for a high urgency to be honoured rather than
+    flagged for "verify before dispatch".
+  - Expect the SLA to be one of the shortest, and the complaint to appear near the top of the officer queue
+    and in the admin's critical list.
+
+**What to point out to the judges**
+1. The **AI assessment**: category, English summary, confidence, severity signals and risk indicators.
+2. The **evidence score breakdown**: detailed description, clear location, photo that matches the text.
+3. The **priority reasons**: each factor tagged by source, so it is clear which parts are AI and which are rules.
+4. The sentence: "The AI read the text and the photo and raised the signals. The rules decided the priority."
+
+**Before image prompt (citizen uploads):**
+> Photo of a thick black electric cable that has snapped from a utility pole and hangs low over a footpath
+> next to a covered school bus stop shelter in an Indian city, the cable ends frayed with a small blue spark,
+> wet pavement and puddles, grey monsoon daylight, a few schoolchildren's backpacks on the bench but nobody
+> close to the wire, a school boundary wall and gate blurred in the background, shot from about six metres away
+> at standing height. Candid smartphone photo, no text, no faces.
+
+**Officer's fix note:** "Supply isolated at the feeder, snapped cable replaced with new insulated cable and
+secured to the pole, joints taped and tested. Area checked and cleared for pedestrians."
+
+**After image prompt (officer uploads):**
+> The same bus stop and the same camera angle six metres away, now with a new neat black cable running
+> tight and high along the pole with no sagging, the footpath clear and dry, the same bus shelter, wall and
+> gate in the background, calm daylight after the rain. Candid smartphone photo, no text, no faces.
+
+---
+
+### Showcase B: Dead animal on a market lane (Animal Management, with Public Health also involved)
+
+**Complaint text (English):**
+> A dead dog has been lying on the lane next to the vegetable market since last night and it has started to smell
+> badly. Flies are collecting on it and shoppers have to walk around it. The lane is narrow and food stalls are
+> only a few metres away, so this is a health risk. Please remove the carcass and disinfect the area today.
+
+- **Location:** 19.0400, 72.9200. **Landmark to type:** "Lane beside the vegetable market, behind the bus depot".
+- **Why it is a good demo:** it shows that **one department owns the complaint while another is shown as
+  "also involved"**, which is deterministic routing and not a guess by the AI.
+- **What should happen (likely):**
+  - Category *Dead animal*, primary department **Animal Management**, with **Public Health & Sanitation** shown
+    as *also involved* on the complaint timeline.
+  - A *public health risk* signal, priority **Medium or High**, and a strong evidence score with a clear photo.
+
+**What to point out to the judges**
+1. Open the timeline entry **"Assigned to Animal Management"** and show the *also involved* department.
+2. Say: "The AI only supplied the category. A fixed table chose the owner and the second department, so the
+   result is the same every time and can be audited."
+3. Optional: edit the department in the admin review panel and show the SLA recalculating.
+
+**Before image prompt (citizen uploads):**
+> Photo of a dead stray dog lying at the edge of a narrow lane next to an Indian vegetable market, a few flies
+> near it, vegetable stalls with crates and umbrellas a few metres away in the background, a handcart parked
+> nearby, harsh midday light, shot from about four metres away, slightly angled down. Candid smartphone photo,
+> no text, no faces, not graphic, no visible blood.
+
+**Officer's fix note:** "Carcass removed in a sealed bag by the animal-management van, taken for disposal. Area
+washed and disinfected with bleaching powder. Public health team informed."
+
+**After image prompt (officer uploads):**
+> The same market lane and the same camera angle four metres away, now clear: the ground washed and mostly dry,
+> a light patch of white disinfectant powder where the animal was, the same stalls, crates and handcart in the
+> background, same midday light. Candid smartphone photo, no text, no faces.
+
+**Officers to use:** `officer.electrical@civicconnect.demo` for Showcase A and
+`officer.animal_management@civicconnect.demo` for Showcase B (see [`passwords.md`](passwords.md)).
+
+---
+
+## 6. Bonus test cases
 
 Use these to show specific features. They do not need the image prompts above.
 
@@ -330,7 +424,7 @@ Use these to show specific features. They do not need the image prompts above.
 
 ---
 
-## 6. Fake and suspicious cases that should be flagged
+## 7. Fake and suspicious cases that should be flagged
 
 These are deliberately bad, fake or manipulative complaints. The system should **still accept**
 each one (it never silently rejects a citizen), but mark it **needs human review** with a reason,
@@ -412,7 +506,7 @@ strong Gaussian blur, or use this prompt:
 
 ---
 
-## 7. Suggested demo order
+## 8. Suggested demo order
 
 1. **Sample 1** (pothole near a school) end to end: submit, duplicate warning, AI result, assign,
    officer fix with after photo, approve, feedback. This is the core story.
