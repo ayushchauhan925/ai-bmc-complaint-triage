@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getComplaint, listComplaints } from '../../services/complaint.service';
 import { ImageGallery } from '../../components/complaint/ImageGallery';
 import { ReopenDialog } from '../../components/complaint/ReopenDialog';
+import { FeedbackSummary } from '../../components/complaint/FeedbackSummary';
 import { EmptyState } from '../../components/common/EmptyState';
 import { CategoryBadge, PriorityBadge } from '../../components/common/Badge';
 import { PageHeader, QueryBoundary, CardSkeleton, fmtDate } from '../../components/ui/kit';
@@ -94,8 +95,17 @@ function ResolvedCard({ complaint, onChanged }: { complaint: Complaint; onChange
       </div>
 
       <div className="mt-4 flex flex-wrap items-start gap-2 border-t border-slate-100 pt-4">
-        <Link to={`/complaints/${complaint.id}`} className="btn-primary text-sm">{t('resolved.view')}</Link>
-        <ReopenDialog complaintId={complaint.id} onReopened={onChanged} />
+        {detail.data?.feedback ? (
+          <div className="w-full space-y-3">
+            <FeedbackSummary feedback={detail.data.feedback} />
+            <Link to={`/complaints/${complaint.id}`} className="btn-secondary text-sm">{t('resolved.viewOnly')}</Link>
+          </div>
+        ) : (
+          <>
+            <Link to={`/complaints/${complaint.id}`} className="btn-primary text-sm">{t('resolved.view')}</Link>
+            <ReopenDialog complaintId={complaint.id} onReopened={onChanged} />
+          </>
+        )}
       </div>
     </li>
   );

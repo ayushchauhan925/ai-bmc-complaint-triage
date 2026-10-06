@@ -13,6 +13,7 @@ import { SeveritySignalsList } from '../components/complaint/SeveritySignalsList
 import { StatusTimeline } from '../components/complaint/StatusTimeline';
 import { ImageGallery } from '../components/complaint/ImageGallery';
 import { FeedbackForm } from '../components/complaint/FeedbackForm';
+import { FeedbackSummary } from '../components/complaint/FeedbackSummary';
 import { OfficerActions } from '../components/complaint/OfficerActions';
 import { AdminActions } from '../components/complaint/AdminActions';
 import { EvidenceIntelligence } from '../components/complaint/EvidenceIntelligence';
@@ -35,7 +36,6 @@ export default function ComplaintDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [duplicateCount, setDuplicateCount] = useState<number | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -216,12 +216,14 @@ export default function ComplaintDetails() {
 
       {user?.role === 'CITIZEN' && hasFeedback && (
         <div className="mt-4 space-y-3">
-          {showFeedback ? (
-            <p className="text-sm text-green-600">Thanks for your feedback!</p>
+          {complaint.feedback ? (
+            <FeedbackSummary feedback={complaint.feedback} />
           ) : (
-            <FeedbackForm complaintId={complaint.id} onDone={() => { setShowFeedback(true); load(); }} />
+            <>
+              <FeedbackForm complaintId={complaint.id} onDone={() => load()} />
+              <ReopenDialog complaintId={complaint.id} onReopened={(updated) => { setComplaint(updated); load(); }} />
+            </>
           )}
-          <ReopenDialog complaintId={complaint.id} onReopened={(updated) => { setComplaint(updated); setShowFeedback(false); }} />
         </div>
       )}
 

@@ -123,6 +123,14 @@ export interface Hotspot {
   complaintNumbers: string[];
 }
 
+export interface ComplaintFeedback {
+  id: number;
+  resolved: boolean;
+  rating: number | null;
+  comment: string | null;
+  created_at: string;
+}
+
 export interface Complaint {
   id: number;
   complaint_number: string;
@@ -168,6 +176,8 @@ export interface Complaint {
   resolved_at: string | null;
   images?: ComplaintImage[];
   history?: ComplaintHistoryEntry[];
+  /** Citizen feedback for the current resolution (null until given). Final once submitted. */
+  feedback?: ComplaintFeedback | null;
   relatedCount?: number;
   incidentId?: number | null;
 }

@@ -1,6 +1,7 @@
 const { pool } = require('../config/db');
 const complaintService = require('../services/complaint/complaint.service');
 const reopenService = require('../services/complaint/reopen.service');
+const feedbackModel = require('../models/feedback.model');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { COMPLAINT_STATUS } = require('../utils/constants');
@@ -12,6 +13,11 @@ const submit = asyncHandler(async (req, res) => {
   }
   if (complaint.status !== COMPLAINT_STATUS.RESOLVED) {
     throw new AppError('Feedback can only be submitted after a complaint is resolved.', 400);
+  }
+
+  // One piece of feedback per resolution, and it cannot be edited afterwards.
+  if (await feedbackModel.findForCurrentResolution(complaint)) {
+    throw new AppError('You have already submitted feedback for this resolution. It can no longer be changed.', 409);
   }
 
   const { resolved, rating, comment } = req.body;

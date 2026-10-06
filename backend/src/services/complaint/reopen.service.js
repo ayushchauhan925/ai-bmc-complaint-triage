@@ -1,6 +1,7 @@
 const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
 const reopeningModel = require('../../models/reopening.model');
+const feedbackModel = require('../../models/feedback.model');
 const statusService = require('./status.service');
 const notificationService = require('../notification/notification.service');
 const { uploadComplaintImage } = require('../upload/cloudinary.service');
@@ -24,6 +25,11 @@ async function reopenComplaint({ complaintId, user, reason, imageFile }) {
   }
   if (complaint.status !== COMPLAINT_STATUS.RESOLVED) {
     throw new AppError('Only resolved complaints can be reopened.', 400);
+  }
+  // Once the citizen has confirmed the fix, that confirmation is final.
+  const existing = await feedbackModel.findForCurrentResolution(complaint);
+  if (existing && existing.resolved) {
+    throw new AppError('You confirmed this complaint as resolved, so it can no longer be reopened.', 409);
   }
 
   let imageUrl = null;

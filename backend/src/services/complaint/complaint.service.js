@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const complaintModel = require('../../models/complaint.model');
+const feedbackModel = require('../../models/feedback.model');
 const { uploadComplaintImage } = require('../upload/cloudinary.service');
 const AppError = require('../../utils/AppError');
 const imageIntelligence = require('../image/imageIntelligence.service');
@@ -66,11 +67,12 @@ async function getComplaintDetail(id) {
   if (!complaint) {
     throw new AppError('Complaint not found.', 404);
   }
-  const [images, history] = await Promise.all([
+  const [images, history, feedback] = await Promise.all([
     complaintModel.getImages(id),
     complaintModel.getHistory(id),
+    feedbackModel.findForCurrentResolution(complaint),
   ]);
-  return { ...complaint, images, history };
+  return { ...complaint, images, history, feedback };
 }
 
 async function listComplaints(filters, pagination) {
