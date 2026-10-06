@@ -214,6 +214,14 @@ export default function ComplaintDetails() {
         </div>
       )}
 
+      {isStaff && complaint.status === 'RESOLVED' && (
+        <div className="mt-4">
+          {complaint.feedback
+            ? <FeedbackSummary feedback={complaint.feedback} variant="staff" />
+            : <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Resolved. Waiting for the citizen to confirm whether the issue is really fixed.</p>}
+        </div>
+      )}
+
       {user?.role === 'CITIZEN' && hasFeedback && (
         <div className="mt-4 space-y-3">
           {complaint.feedback ? (

@@ -15,6 +15,36 @@ export async function assignComplaint(id: number | string, department_id: number
   return res.data.data.complaint;
 }
 
+export type ResolutionView = 'approved' | 'confirmed' | 'awaiting-feedback' | 'not-resolved';
+
+export interface ResolutionRow {
+  id: number;
+  complaint_number: string;
+  title: string;
+  category: string;
+  priority_level: string;
+  status: string;
+  citizen_name: string;
+  department_name: string | null;
+  officer_name: string | null;
+  officer_email: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  feedback: { resolved: boolean; rating: number | null; comment: string | null; created_at: string } | null;
+  reopen: { reason: string | null; created_at: string } | null;
+}
+
+export interface ResolutionOverview {
+  view: ResolutionView;
+  counts: { approved: number; confirmed: number; awaitingFeedback: number; notResolved: number; notResolvedComplaints: number };
+  rows: ResolutionRow[];
+}
+
+export async function getResolutions(view: ResolutionView) {
+  const res = await api.get<ApiResponse<ResolutionOverview>>('/admin/resolutions', { params: { view, limit: 200 } });
+  return res.data.data;
+}
+
 export async function getStatistics() {
   const res = await api.get<ApiResponse<any>>('/admin/statistics');
   return res.data.data;

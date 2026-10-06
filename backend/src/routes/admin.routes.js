@@ -20,6 +20,7 @@ router.get('/complaints', adminController.listComplaints);
 router.patch('/complaints/:id/assign', validateBody(assignSchema), adminController.assign);
 router.get('/complaints/:id/recommend-officer', intelligenceController.recommendOfficer);
 router.get('/statistics', adminController.statistics);
+router.get('/resolutions', adminController.resolutions);
 router.get('/map-data', adminController.mapData);
 router.get('/analytics', dashboardController.fullAnalytics);
 router.get('/departments', adminController.listDepartments);

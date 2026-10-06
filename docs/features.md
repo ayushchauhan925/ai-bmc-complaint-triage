@@ -27,7 +27,7 @@ A complete, role-by-role list of what each kind of user can do in Civic Connect:
 |---|---|---|---|---|
 | **Citizen** | Resident reporting civic issues | Own complaints only | `/` (Home) | Home · Report · My complaints · Resolved · Profile |
 | **Officer** | Department staff (one department, optional ward) | Their department's complaints | `/officer` | Assigned · Field view · All complaints · Profile |
-| **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Approvals · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
+| **Admin** | System administrator | Everything | `/admin` | Command · Complaints · GIS map · Incidents · Departments · Officers · Resolutions · Review queue · Anomalies & forecast · SLA & escalations · Recurring & impact · Analytics · Intelligence · AI & system · Audit log |
 
 Authorisation is enforced on the **server** for every route; the frontend only hides what a role
 can't use. The user record is re-checked on each request, so deactivating an account or changing
@@ -244,7 +244,15 @@ Admins have global scope. The sidebar groups these pages:
   breached count, next deadline, escalations.
 - **Merge** one incident into another; **Export PDF**.
 
-### 6.6 Resolution approvals (`/admin/approvals`)
+### 6.6 Resolutions (`/admin/approvals`)
+A tabbed page covering the whole resolution lifecycle:
+- **Awaiting approval**, **Approved**, **Citizen: resolved**, **Awaiting feedback** and **Citizen: not resolved** tabs, each with a live count.
+- **Approved** lists every complaint an admin marked Resolved, with the citizen's response beside it (confirmed with stars and comment, or still awaiting).
+- **Citizen: resolved** and **Awaiting feedback** filter that list by the citizen's response.
+- **Citizen: not resolved** lists every time a citizen said a fix did not work (the complaint was reopened), with their reason, the date, who fixed it and where the complaint is now.
+- The complaint page also shows the citizen's feedback to admins and officers once it is given.
+
+**Awaiting approval tab**
 - Lists every complaint whose officer has **submitted a resolution** and is waiting for an admin decision (oldest first).
 - Each card shows the complaint, who submitted the fix and when (with their note), the **before and after photos**, and the **AI before/after check** (`SUPPORTED` / `UNCERTAIN` / `NOT_SUPPORTED`, advisory only).
 - **Approve resolution** sets the status to *Resolved*; the citizen is then asked for feedback.

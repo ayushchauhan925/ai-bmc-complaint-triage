@@ -9,6 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const auditService = require('../services/audit/audit.service');
 const timeline = require('../services/complaint/timeline.service');
+const resolutionOverview = require('../services/admin/resolutionOverview.service');
 
 const listComplaints = asyncHandler(async (req, res) => {
   const {
@@ -125,4 +126,10 @@ const listOfficers = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { officers } });
 });
 
-module.exports = { listComplaints, assign, statistics, mapData, listDepartments, listWards, listOfficers };
+const resolutions = asyncHandler(async (req, res) => {
+  const { view, limit } = req.query;
+  const data = await resolutionOverview.overview({ view: typeof view === 'string' ? view : undefined, limit });
+  res.status(200).json({ success: true, data });
+});
+
+module.exports = { listComplaints, assign, statistics, mapData, listDepartments, listWards, listOfficers, resolutions };
