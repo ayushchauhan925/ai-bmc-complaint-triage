@@ -14,34 +14,38 @@ import { ComplaintIdCell, DateCell, SlaCell } from '../../components/table/Cells
 import { ClipboardIcon, AlertIcon, ClockIcon, ShieldIcon, RefreshIcon } from '../../components/common/Icons';
 import type { Complaint } from '../../utils/types';
 
-type Filter = 'all' | 'urgent' | 'at-risk' | 'review';
+type Filter = 'mine' | 'all' | 'urgent' | 'at-risk' | 'review';
 const CLOSED = ['RESOLVED', 'REJECTED'];
 const remainingMs = (c: Complaint) => (c.sla_deadline ? new Date(c.sla_deadline).getTime() - Date.now() : Number.POSITIVE_INFINITY);
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const q = useQuery({ queryKey: ['officer-queue'], queryFn: () => listAssigned({ limit: 100 }), refetchInterval: 60_000 });
-  const [filter, setFilter] = useState<Filter>('all');
+  const [chosen, setChosen] = useState<Filter | null>(null);
 
   const open = useMemo(
     () => (q.data?.rows ?? []).filter((c) => !CLOSED.includes(c.status)).sort((a, b) => b.priority_score - a.priority_score || remainingMs(a) - remainingMs(b)),
     [q.data]
   );
+  const mine = open.filter((c) => user != null && c.officer_id === user.id);
   const urgent = open.filter((c) => c.priority_level === 'CRITICAL' || c.priority_level === 'HIGH');
   const atRisk = open.filter((c) => c.sla_status === 'APPROACHING' || c.sla_status === 'BREACHED');
   const review = open.filter((c) => c.review_required);
-  const visible = filter === 'urgent' ? urgent : filter === 'at-risk' ? atRisk : filter === 'review' ? review : open;
-  const next = open[0];
+  // Open on "Assigned to me" when something is assigned to this officer, otherwise on the whole department queue.
+  const filter: Filter = chosen ?? (mine.length > 0 ? 'mine' : 'all');
+  const visible = filter === 'mine' ? mine : filter === 'urgent' ? urgent : filter === 'at-risk' ? atRisk : filter === 'review' ? review : open;
+  const next = (mine.length > 0 ? mine : open)[0];
 
   const RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
   const table = useClientTable(visible, {
-    complaint: (c) => c.complaint_number, category: (c) => c.category, priority: (c) => RANK[c.priority_level], status: (c) => c.status,
+    assignee: (c) => (c.officer_id == null ? 2 : user && c.officer_id === user.id ? 0 : 1), complaint: (c) => c.complaint_number, category: (c) => c.category, priority: (c) => RANK[c.priority_level], status: (c) => c.status,
     sla: (c) => (Number.isFinite(remainingMs(c)) ? remainingMs(c) : null), reported: (c) => new Date(c.created_at.replace(' ', 'T')).getTime(),
   });
   const columns: Column<Complaint>[] = [
     { id: 'complaint', header: 'Complaint', sortKey: 'complaint', locked: true, truncate: true, cell: (c) => (<><ComplaintIdCell id={c.id} number={c.complaint_number} review={c.review_required} /><span className="block max-w-xs truncate text-xs text-slate-500">{c.ai_title || c.description}</span></>) },
     { id: 'category', header: 'Category', sortKey: 'category', hideBelow: 'lg', width: 'w-44', cell: (c) => <CategoryBadge category={c.category} /> },
     { id: 'priority', header: 'Priority', sortKey: 'priority', width: 'w-24', cell: (c) => <PriorityBadge level={c.priority_level} /> },
+    { id: 'assignee', header: 'Assigned to', hint: 'Who owns this complaint', sortKey: 'assignee', width: 'w-36', cell: (c) => (c.officer_id == null ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">Unassigned</span> : user && c.officer_id === user.id ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">You</span> : <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">Another officer</span>) },
     { id: 'status', header: 'Status', sortKey: 'status', width: 'w-32', cell: (c) => <StatusBadge status={c.status} /> },
     { id: 'sla', header: 'SLA', hint: 'Time left against the service-level deadline', sortKey: 'sla', width: 'w-44', cell: (c) => <SlaCell status={c.sla_status} deadline={c.sla_deadline} /> },
     { id: 'reported', header: 'Reported', sortKey: 'reported', firstSort: 'desc', hideBelow: 'xl', width: 'w-40', cell: (c) => <DateCell value={c.created_at} relative /> },
@@ -52,7 +56,7 @@ export default function OfficerDashboard() {
     <button
       key={id}
       aria-pressed={filter === id}
-      onClick={() => { setFilter(id); table.resetPage(); }}
+      onClick={() => { setChosen(id); table.resetPage(); }}
       className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${filter === id ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
     >
       {label} <span className="ml-1 text-slate-400">{n}</span>
@@ -63,7 +67,7 @@ export default function OfficerDashboard() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title={`Work queue${user ? ` · ${user.name.split(' ')[0]}` : ''}`}
-        description="Complaints routed to your department, most urgent first."
+        description="Complaints assigned to you, plus the shared queue routed to your department, most urgent first."
         actions={<><CsvButton label="Export queue (CSV)" filename={`work-queue-${new Date().toISOString().slice(0, 10)}.csv`} rows={open} columns={[{ header: 'Complaint ID', value: (c) => c.complaint_number }, { header: 'Category', value: (c) => c.category }, { header: 'Priority', value: (c) => c.priority_level }, { header: 'Status', value: (c) => c.status }, { header: 'SLA', value: (c) => c.sla_status }, { header: 'SLA deadline', value: (c) => c.sla_deadline }, { header: 'Address', value: (c) => c.address }, { header: 'Reported', value: (c) => c.created_at }]} /><button className="btn-secondary !py-1.5 text-xs" onClick={() => q.refetch()} disabled={q.isFetching}><RefreshIcon size={14} className={q.isFetching ? 'animate-spin' : ''} /> Refresh</button></>}
       />
 
@@ -71,8 +75,9 @@ export default function OfficerDashboard() {
         <QueryBoundary query={q} skeleton={<PageSkeleton />}>
           {() => (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <StatCard label="Open" value={open.length} icon={<ClipboardIcon size={16} />} />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <StatCard label="Assigned to me" value={mine.length} icon={<ClipboardIcon size={16} />} tone={mine.length ? 'success' : 'default'} />
+                <StatCard label="Open in department" value={open.length} icon={<ClipboardIcon size={16} />} />
                 <StatCard label="Critical / high" value={urgent.length} icon={<AlertIcon size={16} />} tone={urgent.length ? 'critical' : 'default'} />
                 <StatCard label="SLA at risk" value={atRisk.length} icon={<ClockIcon size={16} />} tone={atRisk.length ? 'warning' : 'default'} />
                 <StatCard label="Needs review" value={review.length} icon={<ShieldIcon size={16} />} tone={review.length ? 'warning' : 'default'} />
@@ -94,6 +99,7 @@ export default function OfficerDashboard() {
               )}
 
               <div className="flex flex-wrap gap-2" role="group" aria-label="Filter queue">
+                {chip('mine', 'Assigned to me', mine.length)}
                 {chip('all', 'All open', open.length)}
                 {chip('urgent', 'Critical & high', urgent.length)}
                 {chip('at-risk', 'SLA at risk', atRisk.length)}
@@ -106,8 +112,8 @@ export default function OfficerDashboard() {
                 rows={table.rows}
                 rowKey={(c) => c.id}
                 rowClassName={(c) => `row-${c.priority_level}`}
-                emptyTitle={open.length === 0 ? 'Nothing assigned yet' : 'Nothing in this view'}
-                emptyDescription={open.length === 0 ? 'New complaints for your department will appear here.' : 'Try another filter.'}
+                emptyTitle={open.length === 0 ? 'Nothing in the queue yet' : filter === 'mine' ? 'Nothing assigned to you yet' : 'Nothing in this view'}
+                emptyDescription={open.length === 0 ? 'New complaints for your department will appear here.' : filter === 'mine' ? 'Switch to "All open" to pick up work from the department queue.' : 'Try another filter.'}
                 sort={table.sort}
                 onSortChange={table.setSort}
                 mobileCard={(c) => <ComplaintCard complaint={c} variant="staff" />}
