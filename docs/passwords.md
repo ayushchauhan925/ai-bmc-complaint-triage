@@ -64,6 +64,7 @@ Each officer belongs to one department and sees only that department's complaint
 | Amit Shah | `amit.shah@example.demo` | no complaints yet (use to submit a new one) |
 | Kavita Menon | `kavita.menon@example.demo` | no complaints yet (use to submit a new one) |
 | Rahul Gupta | `rahul.gupta@example.demo` | no complaints yet (use to submit a new one) |
+| Aniruddha Bane | `aniruddha.bane@example.demo` | no complaints yet (use to submit a new one) |
 
 Citizens can submit, track, give feedback on and reopen their own complaints only. You can also register a new citizen account from the sign-up page.
 
